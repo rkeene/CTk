@@ -33,7 +33,10 @@ UPDATE_VARS="configure.ac"
 
 # This script is executed immediately after copying the files
 # to a temp directory to attempt to compile
-BEFORE="build/autogen.sh"
+BEFORE=""
+
+# This script is executed after updating variables
+UPDATED="build/autogen.sh"
 
 # This script is executed immediately prior to creation of the
 # tarball

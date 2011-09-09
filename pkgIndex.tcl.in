@@ -1,0 +1,1 @@
+package ifneeded CTk @PACKAGE_VERSION@ "load [file join $dir libctk.@SHOBJEXT@] Tk; package provide CTk @PACKAGE_VERSION@"

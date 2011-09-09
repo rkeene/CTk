@@ -75,6 +75,9 @@ CFLAGS = @CFLAGS@
 # properly by the configure script.
 LDFLAGS =		@LDFLAGS@
 
+# Linker options when compiling a shared object
+SHOBJLDFLAGS =          @SHOBJLDFLAGS@
+
 # Preprocessor options (-I/.../include) necessary to find the TCL
 # and curses header files (if any).  It is (hopefully) filled in
 # properly by the configure script.
@@ -176,9 +179,9 @@ libctk.a: $(OBJS)
 	ar cr libctk.a $(OBJS)
 	$(RANLIB) libctk.a
 
-libctk.so: $(OBJS)
-	rm -f libctk.so
-	gcc -rdynamic -shared $(CFLAGS) $(LDFLAGS) -o libctk.so $(OBJS) $(LIBS)
+libctk.@SHOBJEXT@: $(OBJS)
+	rm -f libctk.@SHOBJEXT@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SHOBJLDFLAGS) -o libctk.@SHOBJEXT@ $(OBJS) $(LIBS)
 
 configInfo: Makefile
 	@rm -f configInfo

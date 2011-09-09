@@ -1,7 +1,7 @@
 #! /usr/bin/env tclsh
 
 if {![info exists tk_port]} {
-	set tk_library /home/usace/u4423rsk/Desktop/ctk8.2_working/library
+	set tk_library [file join [file dirname [info script]] library]
 	load ./libctk.so Tk
 }
 

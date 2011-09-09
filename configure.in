@@ -1,0 +1,291 @@
+dnl	This file is an input file used by the GNU "autoconf" program to
+dnl	generate the file "configure", which is run during Tk installation
+dnl	to configure the system for the local environment.
+AC_INIT(tk.h)
+
+# @(#) $Id: ctk.shar,v 1.50 1996/01/15 14:47:16 andrewm Exp andrewm $
+
+AC_ARG_WITH(ncurses,
+	[  --with-ncurses   use ncurses library instead of curses],
+	, [with_ncurses=no])
+AC_ARG_WITH(libdirs,
+	[  --with-libdirs   directories to add to library search path])
+AC_ARG_WITH(incdirs,
+	[  --with-incdirs   directories to add to include search path])
+
+for ldir in $with_libdirs ;do
+    LDFLAGS="$LDFLAGS -L$ldir"
+done
+for idir in $with_incdirs ;do
+    CPPFLAGS="$CPPFLAGS -I$idir"
+done
+
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+AC_PREFIX(cwish)
+CC=${CC-cc}
+AC_SUBST(CC)
+AC_HAVE_HEADERS(unistd.h limits.h)
+
+#--------------------------------------------------------------------
+#	Include sys/select.h if it exists and if it supplies things
+#	that appear to be useful and aren't already in sys/types.h.
+#	This appears to be true only on the RS/6000 under AIX.  Some
+#	systems like OSF/1 have a sys/select.h that's of no use, and
+#	other systems like SCO UNIX have a sys/select.h that's
+#	pernicious.  If "fd_set" isn't defined anywhere then set a
+#	special flag.
+#--------------------------------------------------------------------
+
+AC_MSG_CHECKING([fd_set and sys/select])
+AC_TRY_COMPILE([#include <sys/types.h>],
+	[fd_set readMask, writeMask;], tk_ok=yes, tk_ok=no)
+if test $tk_ok = no; then
+    AC_HEADER_EGREP(fd_mask, sys/select.h, tk_ok=yes)
+    if test $tk_ok = yes; then
+	AC_DEFINE(HAVE_SYS_SELECT_H)
+    fi
+fi
+AC_MSG_RESULT($tk_ok)
+if test $tk_ok = no; then
+    AC_DEFINE(NO_FD_SET)
+fi
+
+#--------------------------------------------------------------------
+#	Supply a substitute for stdlib.h if it doesn't define strtol,
+#	strtoul, or strtod (which it doesn't in some versions of SunOS).
+#--------------------------------------------------------------------
+
+AC_MSG_CHECKING(stdlib.h)
+AC_HEADER_EGREP(strtol, stdlib.h, tk_ok=yes, tk_ok=no)
+AC_HEADER_EGREP(strtoul, stdlib.h, , tk_ok=no)
+AC_HEADER_EGREP(strtod, stdlib.h, , tk_ok=no)
+if test $tk_ok = no; then
+    AC_DEFINE(NO_STDLIB_H)
+fi
+AC_MSG_RESULT($tk_ok)
+
+#--------------------------------------------------------------------
+#	Check for various typedefs and provide substitutes if
+#	they don't exist.
+#--------------------------------------------------------------------
+
+AC_MODE_T
+AC_PID_T
+AC_SIZE_T
+AC_UID_T
+
+#--------------------------------------------------------------------
+#	Locate the curses header files and the curses library
+#	archive.
+#--------------------------------------------------------------------
+
+got_it=no
+if test $with_ncurses = yes; then
+    AC_CHECK_LIB(ncurses, initscr,
+	    [LIBS="$LIBS -lncurses"; got_it=yes])
+else
+    AC_CHECK_LIB(curses, initscr,
+	    [LIBS="$LIBS -lcurses"; got_it=yes],
+	    [unset ac_cv_lib_curses
+	    AC_CHECK_LIB(curses, initscr,
+		    [LIBS="$LIBS -lcurses -ltermcap"; got_it=yes],
+		    ,
+		    [-ltermcap])] )
+fi
+if test $got_it = no; then
+    AC_MSG_WARN(couldn't find curses library archive)
+    AC_MSG_WARN(will not be able to properly determine curses capabilities)
+fi
+
+AC_MSG_CHECKING([curses header file])
+got_it=no
+if test $with_ncurses = yes; then
+    AC_TRY_CPP([#include <ncurses.h>],
+	    [got_it=ncurses.h; AC_DEFINE(USE_NCURSES_H)])
+fi
+if test $got_it = no; then
+    AC_TRY_CPP([#include <curses.h>], got_it=curses.h)
+fi
+if test $got_it = no; then
+    AC_MSG_WARN(couldn't find curses include file)
+fi
+AC_MSG_RESULT($got_it)
+
+#--------------------------------------------------------------------
+#	Check the curses library features.
+#--------------------------------------------------------------------
+
+AC_HAVE_FUNCS(curs_set set_term beep keypad)
+
+#--------------------------------------------------------------------
+#	Check to see whether the system supports the matherr function
+#	and its associated type "struct exception".
+#--------------------------------------------------------------------
+
+AC_MSG_CHECKING([matherr support])
+AC_TRY_COMPILE([#include <math.h>], [
+struct exception x;
+x.type = DOMAIN;
+x.type = SING;
+], tk_ok=yes, tk_ok=no)
+AC_MSG_RESULT($tk_ok)
+if test $tk_ok = yes; then
+    AC_DEFINE(NEED_MATHERR)
+fi
+
+#--------------------------------------------------------------------
+#	Figure out how to find out whether a FILE structure contains
+#	buffered readable data.  Some known names for the count field:
+#		_cnt:		Most UNIX systems
+#		__cnt:		HPUX
+#		_r:		BSD
+#		readCount:	Sprite
+#	Or, in GNU libc there are two fields, _gptr and _egptr, which
+#	have to be compared.
+#--------------------------------------------------------------------
+
+AC_MSG_CHECKING([count field in FILE structures])
+AC_TRY_COMPILE([#include <stdio.h>],
+	[FILE *f = stdin; f->_cnt = 0;], fcnt="_cnt", )
+if test "$fcnt" = ""; then
+    AC_TRY_COMPILE([#include <stdio.h>],
+	[FILE *f = stdin; f->__cnt = 0;], fcnt="__cnt", )
+fi
+if test "$fcnt" = ""; then
+    AC_TRY_COMPILE([#include <stdio.h>],
+	[FILE *f = stdin; f->_r = 0;], fcnt="_r", )
+fi
+if test "$fcnt" = ""; then
+    AC_TRY_COMPILE([#include <stdio.h>],
+	[FILE *f = stdin; f->readCount = 0;], fcnt="readCount", )
+fi
+if test "$fcnt" != ""; then
+    AC_DEFINE_UNQUOTED(TK_FILE_COUNT, $fcnt)
+fi
+if test "$fcnt" = ""; then
+    AC_TRY_COMPILE([#include <stdio.h>],
+	[FILE *f = stdin; f->_gptr = f->_egptr;],
+	tk_ok=yes, tk_ok=no)
+    if test $tk_ok = yes; then
+	AC_DEFINE(TK_FILE_GPTR)
+	fcnt="_gptr/_egptr"
+    fi
+fi
+if test "$fcnt" = ""; then
+    AC_TRY_COMPILE([#include <stdio.h>],
+	[FILE *f = stdin; f->_IO_read_ptr = f->_IO_read_end;],
+	tk_ok=yes, tk_ok=no)
+    if test $tk_ok = yes; then
+	AC_DEFINE(TK_FILE_READ_PTR)
+	fcnt="_IO_read_ptr/_IO_read_end"
+    fi
+fi
+if test "$fcnt" = ""; then
+    AC_MSG_RESULT([not found; must supply TkReadDataPending procedure])
+else
+    AC_MSG_RESULT("$fcnt")
+fi
+
+#--------------------------------------------------------------------
+#	On a few very rare systems, all of the libm.a stuff is
+#	already in libc.a.  Set compiler flags accordingly.
+#	Also, Linux requires the "ieee" library for math to
+#	work right (and it must appear before "-lm").
+#--------------------------------------------------------------------
+
+AC_CHECK_FUNC(sin, , [LIBS="-lm $LIBS"])
+AC_CHECK_LIB(ieee, main, [LIBS="-lieee $LIBS"])
+
+#--------------------------------------------------------------------
+#	Apparently SCO requires -lsocket for the gettimeofday()
+#	function.
+#--------------------------------------------------------------------
+
+AC_CHECK_FUNC(gettimeofday, , [LIBS="-lsocket $LIBS"])
+
+#--------------------------------------------------------------------
+#	If this system doesn't have a memmove procedure, use memcpy
+#	instead.
+#--------------------------------------------------------------------
+
+AC_CHECK_FUNC(memmove, , [AC_DEFINE(memmove, memcpy)])
+
+#--------------------------------------------------------------------
+#	Figure out whether "char" is unsigned.  If so, set a
+#	#define.
+#--------------------------------------------------------------------
+
+AC_MSG_CHECKING(type of "char")
+AC_TRY_RUN([
+int main()
+{
+    char c;
+    int i;
+    c = 0377;
+    i = c;
+    if (i == -1) {
+	exit(0);
+    }
+    exit(1);
+}], tk_signed=1, tk_signed=0)
+if test $tk_signed = 0; then
+    AC_DEFINE(CHAR_UNSIGNED)
+    AC_MSG_RESULT(unsigned)
+else
+    AC_MSG_RESULT(signed)
+fi
+
+#--------------------------------------------------------------------
+#	SGI systems don't use the BSD form of the gettimeofday function,
+#	but they have a BSDgettimeofday function that can be used instead.
+#
+#	Also, check for the existence of a gettimeofday declaration,
+#	to tkPort.h can declare it if it isn't already declared.
+#--------------------------------------------------------------------
+
+AC_CHECK_FUNC(BSDgettimeofday, AC_DEFINE(HAVE_BSDGETTIMEOFDAY))
+AC_MSG_CHECKING([for gettimeofday declaration])
+AC_EGREP_HEADER(gettimeofday, sys/time.h, AC_MSG_RESULT(present), [
+    AC_MSG_RESULT(missing)
+    AC_DEFINE(GETTOD_NOT_DECLARED)
+])
+
+#--------------------------------------------------------------------
+#	Under Solaris 2.4, strtod returns the wrong value for the
+#	terminating character under some conditions.  Check for this
+#	and if the problem exists use a substitute procedure
+#	"fixstrtod" (provided by Tcl) that corrects the error.
+#--------------------------------------------------------------------
+
+AC_CHECK_FUNC(strtod, tk_strtod=1, tk_strtod=0)
+if test "$tk_strtod" = 1; then
+    AC_MSG_CHECKING([for Solaris 2.4 strtod bug])
+    AC_TRY_RUN([
+	extern double strtod();
+	int main()
+	{
+	    char *string = "NaN";
+	    char *term;
+	    strtod(string, &term);
+	    if ((term != string) && (term[-1] == 0)) {
+		exit(1);
+	    }
+	    exit(0);
+	}], AC_MSG_RESULT(ok), [
+	    AC_MSG_RESULT(buggy)
+	    AC_DEFINE(strtod, fixstrtod)
+	])
+fi
+
+#--------------------------------------------------------------------
+#	Locate the Tcl header files and the Tcl library
+#	archive.
+#--------------------------------------------------------------------
+
+AC_CHECK_LIB(tcl, Tcl_Init, [LIBS="-ltcl8.0 $LIBS"; got_it=yes],
+    [AC_MSG_WARN(couldn't find tcl8.0 library archive)] )
+AC_TRY_CPP([#include "tcl.h"], ,
+    [AC_MSG_WARN(couldn't find tcl include file)] )
+
+AC_OUTPUT(Makefile)

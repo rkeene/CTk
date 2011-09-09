@@ -1,0 +1,46 @@
+This file contains a list of bugs to fix and minor feature changes
+needed in the Tk toolkit.  The list is ordered by the time when the
+idea for the change first arose;  no priority should be inferred from
+the order.
+
+@(#) $Id: ctk.shar,v 1.50 1996/01/15 14:47:16 andrewm Exp andrewm $
+
+1. Add option to turn off background fill on window visibility
+changes (only frame and toplevel widgets need it).
+
+2. Implement embedded windows for text widget.
+
+3. Fix cursor display in text widgets (occasionally off the right edge
+of the screen).
+
+5. Implement remaining methods of wm command.
+
+7.  Add bindings for entry and text selection (ones that can be
+generated from a character terminal).
+
+8. Support color?  Handy for PC consoles with too little oomph for X.
+(And for people with VT320 terminals - but does anyone really have
+them?)
+
+9. Add message and scale widgets.
+
+10. Add do-nothing variants of all remaining unsupported Tk commands?
+
+11. Implement remaining text display attributes (only underline works) -
+would some way of mapping the attributes to available terminal attributes.
+
+18. Extend command dialog to include menu of complete window management
+operations.
+
+23. Modify tkFont.c so that display of ISO-??? characters is reasonable
+(map characters with diacritics to characters without).
+
+24. Can't use -geometry option because "wm" is defined in time - either
+move forward Tk_AppInit, or make "wm" a C command.
+
+25. Add "ctk exec" command to execute an interactive command on win's
+display. (e.g. "ctk exec . vi myfile")
+
+26. Call delscreen() after endwin() on systems that define delscreen().
+(SysVR4 curses seem to need it to free up resources - but HP curses
+doesn't define delscreen())

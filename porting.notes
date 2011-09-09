@@ -1,0 +1,47 @@
+		Porting Notes for the CTk Toolkit
+
+@(#) $Header: /usrs/andrewm/work/RCS/ctk.shar,v 1.50 1996/01/15 14:47:16 andrewm Exp andrewm $
+
+This file contains notes for build CTk on various platforms.  So
+far, all of these notes are from personal experience.  Hopefully
+I'll get more entries donated. :-)
+
+
+
+Linux
+-----
+Install ncurses, then (with slackware atleast) use:
+
+    configure -with-ncurses -with-incdirs=/usr/include/ncurses
+
+HP-UX
+-----
+If using ncurses, you must add -Ae to CFLAGS (to use extended ANSI compiler)
+because ncurses.h is in ANSI C.
+
+HP curses has no curs_set - so the terminal cursor is left flashing
+in random places.  There seems to be a bug that will leave random
+highlights (underlines) on the screen (Wyse 60) (maybe using spaces
+to move the cursor while in the highlight mode?) (our highly customized
+terminfo entries may be at fault, but they work with ncurses).
+
+Sun OS
+------
+Use the system V compiler, that is:
+
+    CC=/usr/5bin/cc configure
+
+BSD Curses
+----------
+Lots of difficulties, and the output is pretty terrible (only one
+display attribute - can't turn of the random flashing cursor -
+missing most of the non-ASCII keys).  I'm not sure if it is worth
+trying to support it.
+
+When compiling ctkDisplay.c, get in curses.h about "VOID redefined" -
+doesn't seem to cause a problem though.
+
+BSD Curses seems to require a fflush() after a refresh() - even though
+my documents say that is should not be necessary.  Is there a cleaner
+way of doing this?
+

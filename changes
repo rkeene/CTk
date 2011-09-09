@@ -1,0 +1,317 @@
+Changes made since ctk8.0 was initially released are summarized below:
+
+Changed the 'configure' command to recognize tcl8.0
+Changed the Makefile.in to build cwish$(VERSION) instead of cwish
+
+This file summarizes all changes made to CTk since version 4.0a1 was
+released on March 12, 1995.  Changes that aren't backward compatible
+are marked specially.
+ 
+@(#) $Id: ctk.shar,v 1.50 1996/01/15 14:47:16 andrewm Exp andrewm $
+
+$Log: ctk.shar,v $
+# Revision 1.50  1996/01/15  14:47:16  andrewm
+# More portability glitches (needed to reset interpreter result
+# in TkEntryInsert routines).
+#
+# Revision 1.49  1996/01/13  18:31:51  andrewm
+# Dumb typos in tkCmds.c - found when build under SunOS.
+#
+# Revision 1.48  1995/12/21  19:31:05  andrewm
+# Added "ctk redraw" command.
+#
+# Revision 1.47  1995/12/20  22:22:00  andrewm
+# (bug fix) made ctkDisplay.c 8-bit clean (wasn't casting char
+# to unsigned char) - thanks Jan Vlcek.
+#
+# Revision 1.46  1995/12/20  21:13:04  andrewm
+# Incorporate changes from Tk4.0 patch 3 (tk4.0p3).
+#
+# Revision 1.45  1995/12/20  16:28:09  andrewm
+# Incorporate changes from tk4.0 patch 2.
+#
+# Revision 1.44  1995/12/04  19:57:27  andrewm
+# (bug fix) tkListbox.c - display cursor even when active row is not
+# visible (put it in the top left corner).
+#
+# (feature change) tkListbox.c - no longer display "*" next to selected
+# items - rely on display attribute instead.
+#
+# (feature change) listbox.tcl - Left and Right now scroll by pages
+# instead of characters.
+#
+# Revision 1.43  1995/12/04  19:19:52  andrewm
+# bug fix - forgot to change var name when pasting code into tk_popup.
+#
+# Revision 1.42  1995/11/19  17:07:16  andrewm
+# Incorporate changes from Tk4.0 patch 1.
+#
+# Revision 1.41  1995/11/17  15:35:49  andrewm
+# Drop use of A_INVIS in ctkDisplay.c - those styles should never be
+# drawn anyway - and most terms don't support it (and it screws up
+# out terminal session manager).
+#
+# Revision 1.40  1995/11/06  13:31:19  andrewm
+# Change TK_PATCH_LEVEL to CTK_PATCH_LEVEL and tcl variable tk_patchLevel
+# with ctk_patchLevel.  Only version numbers track between Tk and CTk -
+# and this make for an easy way to tell when you are using CTk.
+#
+# Add Tk_RestackWindow() and pull stacking arguments out of Tk_Map() -
+# now raise and lower commands use Tk_RestackWindow instead of Ctk_Map
+# (because they should not map unmapped windows).
+#
+# The CTk menu now underlines the X in Exit (not the E).
+#
+# Revision 1.39  1995/08/31  19:48:54  andrewm
+# Make sure that all uses of ckalloc/ckfree are with (char *) pointers
+# (cast when necessary).
+#
+# Install as version 4.0 - don't need a different library for each patch.
+#
+# Revision 1.38  1995/08/25  20:38:47  andrewm
+# bug fix - finally track down glitch that caused some slaves to not
+# be mapped - backwards logic in tkGeometry.c.
+#
+# aesthetics - tk_dialog now uses a simpler appearance for the default
+# button (add [] to label instead of an enclosing frame).
+#
+# Revision 1.37  1995/08/25  18:41:19  andrewm
+# Change tkFindMenu to that it only finds menubuttons that do not
+# have an indicator (otherwise the F10 key will fire menus of
+# options buttons).
+#
+# Add exit to Ctk menu.
+#
+# Revision 1.36  1995/08/24  17:50:35  andrewm
+# Add compatibilty info to tk.h to simplify porting of Tk extensions
+# to ctk (BLT table was easy!).
+#
+# Revision 1.35  1995/08/22  19:48:01  andrewm
+# Fix bug when destroying all windows from within a command from
+# an event binding (could core dump).
+#
+# Revision 1.34  1995/08/22  17:31:37  andrewm
+# Add ability for multi-column (wrapped) menus.
+#
+# Change menu button indicator to "^" (was "=").
+#
+# Revision 1.33  1995/08/21  21:39:57  andrewm
+# More logical key fixes - no longer bind directly to "space" - instead
+# bind to Select, and remap space to Select.
+#
+# Make Return a do-what-I-want key instead of the dialog closure key
+# (which is now Execute).
+#
+# Curses Enter/Send key now maps to KP_Enter, not Return.
+#
+# Revision 1.32  1995/08/21  20:47:50  andrewm
+# Remove root window from name table after creating "." window -
+# otherwise user can reference the root, which can cause core dumps.
+#
+# Change bindings to use logical key names only - then central
+# ctk.tcl binds other keys to generate logical key events.
+#
+# Add ctk_event command (ala testevent).
+#
+# Revision 1.31  1995/08/21  14:52:49  andrewm
+# Fix foolish change to text/entry insertion - back to Insert procefdure
+# returning a boolean.
+#
+# Revision 1.30  1995/08/21  13:30:49  andrewm
+# Pull out the menu traversal by matching first label character - decide
+# it better belongs in a library.
+#
+# Revision 1.29  1995/08/18  21:58:02  andrewm
+# Modify bindings within menu to activate entries by pressing the first
+# letter of their label.
+#
+# Revision 1.28  1995/08/18  19:56:34  andrewm
+# Rewite the tkEntryInsert and tkEntrySeeInsert procedures in C.
+# Not sure if the payoff is worth it this time.
+#
+# Revision 1.27  1995/08/18  14:15:35  andrewm
+# Rewrite the tk_focusNext and tk_focusPrev procedures in C, because
+# their overhead was annoying on loaded server machines - particularly
+# if you overshoot a widget and have not Shift-Tab on your terminal!
+
+--- ctk4.0b1 Released ---
+
+# Revision 1.26  1995/07/25  14:07:28  andrewm
+# (new feature) Add some of the Tk demos - begin fixing them for CTk.
+#
+# Clean up documentation for CTk 4.0b1 release.
+#
+# Revision 1.25  1995/07/21  21:19:00  andrewm
+# (bug fix) fixes for non-ANSI compiler (SunOs).
+#
+# Revision 1.24  1995/07/20  21:26:44  andrewm
+# (new feature) add -with-libdirs and -with-incdirs directives for
+# configure.
+#
+# (new feature) unsupported Tk commands are now passed to a "ctk_unsupported"
+# command - if this command is not defined then the command is ignored.
+#
+# Revision 1.23  1995/07/20  18:05:00  andrewm
+# (bug fix) tkListbox.c - don't let cursor scroll horizontally with contents
+# of listbox.
+#
+# Revision 1.22  1995/07/20  16:20:50  andrewm
+# Fill in cwish man page.
+# Include configuration changes from Tk4.0
+#
+# Revision 1.21  1995/07/19  21:24:09  andrewm
+# (feature change, bug fix) Include Tk4.0 changes to the (C)Tk library files.
+#
+# Revision 1.20  1995/07/18  21:38:55  andrewm
+# (bug fix, new feature, changed feature) Incorporate changes from Tk4.0b4
+# and Tk4.0 (final release).
+#
+# (feature change) tkListbox.c - selected items in listbox are now
+# highlighted for the entire width of the listbox.
+#
+# Revision 1.19  1995/07/17  12:38:47  andrewm
+# (feature change) ctk.tcl - go back to activating menubar buttons
+# with unshifted alpha characters.
+#
+# Revision 1.18  1995/07/14  15:45:38  andrewm
+# (new feature) updgrade tkMain.c and tkAppInit.c to work with tcl7.4 (final)
+#
+# Revision 1.17  1995/07/11  22:08:19  andrewm
+# (new feature) tkFocus.c - now try to pass focus to the topmost visible
+# toplevel when focus is lost (focus window destroyed).
+#
+# Revision 1.16  1995/07/11  20:54:02  andrewm
+# (bug fix) wm.tcl - fix several references to "winfo" that should be "info".
+#
+# Revision 1.15  1995/07/11  20:33:19  andrewm
+# (new feature) tkFocus.c - added local focus maintenance, so that
+# each top-level remembers the last child to have the focus.
+#
+# Revision 1.14  1995/07/11  19:25:12  andrewm
+# (new feature) added binding for F2 to pass focus to next top level -
+# really just a stop gap till I write a real window manager for CTk.
+#
+# Revision 1.13  1995/07/11  18:13:53  andrewm
+# (bug fix) tkCmds.c - "winfo children" no longer reports "." as
+# a child of itself.
+#
+# Revision 1.12  1995/07/10  13:29:17  andrewm
+# add -borderwidth to list of unsupported options (its not supported
+# for text tags).
+#
+# Revision 1.11  1995/06/24  23:45:13  andrewm
+# (new feature) add list of values for unsupported options - return this
+# value when "cget" is attempted on the option.
+#
+# Revision 1.10  1995/06/24  17:04:58  andrewm
+# (bug fix) tkWindow.c: change initialization in Tk_CreateMainWindow()
+# so that .ctkdefaults can be processed (used to cause a crash).
+# Also set default geometry for "." to 20x10.
+#
+# Revision 1.9  1995/06/24  15:58:50  andrewm
+# (new feature) ctkDisplay.c: display open fails if device is not a tty.
+#
+# Revision 1.8  1995/06/23  20:57:00  andrewm
+# (bug fix) tkTextDisp.c - Fix a prior fix in TkTextSetYView() when
+# adjusting just a little below the current window (could cause a
+# core dump).
+#
+# Revision 1.7  1995/06/23  13:26:46  andrewm
+# (feature change) frames/toplevels no longer highlight when they
+# have the focus (it was a waste).
+#
+# (feature change) menus default to "-tearoff 0"  (should remove support
+# for -tearoff, it has no practical use in ctk - the torn off menu
+# would be less convenient than the original).
+#
+# Revision 1.6  1995/06/11  22:44:11  andrewm
+# (bug fix) fix bug where bottom of text widget would not be cleared
+# when lines were removed (also remove some superfluous code) tkTextDisp.c
+#
+# Revision 1.5  1995/06/11  22:08:24  andrewm
+# use curses KEY_ constants in keyCodes.h (used to be hard-coded).
+#
+# Revision 1.4  1995/06/11  21:29:42  andrewm
+# (bug fix) wm procedure now sets -relx/-rely so that geometry can be
+# changed without withdrawing the window.
+#
+# (feature change) Traversal to menubutton via shortcut now only happens
+# with shifted alpha characters.
+#
+# Revision 1.3  1995/06/11  14:36:39  andrewm
+# Display focus/insertion point using terminal cursor (instead of inverted
+# text) - faster and better appearance.
+#
+# Revision 1.2  1995/05/28  14:55:30  andrewm
+# (new feature) sweeping changes, add tkOption.c, to support
+# "option" command.
+
+5/5/95 (bug fix) Modify command.tcl so that commands are evaluated
+in a global context.
+
+--- ctk4.0a2 Released ---
+
+5/4/95 (bug fix) Modify configure.in to check for gettimeofday() -
+if it doesn't exist add the socket library (for SCO).
+
+5/4/95 (new feature) Modify ctkDisplay.c so that the environment
+variable CTK_TERM can override the TERM environment variable (to
+allow terminal definitions customized for CTk).
+
+5/3/95 (new feature) Add ctkDialog for interactive cwish sessions.  Modify
+tkMain.c so that it calls ctkDialog instead of reading commands from
+stdin when the user doesn't redirect the display.
+
+5/3/95 (feature change) Modify tkCmds.c so that widget bindings come before
+class bindings.  (Patch from Dr. Ousterhout.)
+*** POTENTIAL INCOMPATIBILITY ***
+
+4/22/95 (bug fix) Modify tkFont.c and and tkTextDisp.c so that cursor
+is drawn in entry and text widgets when the insertion point is in front
+of a tab character.
+
+4/22/95 (new feature) Add scrollbar.tcl for scrollbar keyboard bindings and
+modify tkScrollbar.c to highlight when the scrollbar has the focus.
+(But scrollbars default to "-takefocus 0".)
+
+4/22/95 (feature change) Modify tkMain.c and tkWindow.c to change
+the environment variable that specifies display terminal to CTK_DISPLAY
+(CWISH_DISPLAY will still work but it is deprecated and support for it
+will eventually be removed).
+*** POTENTIAL INCOMPATIBILITY ***
+
+4/22/95 (feature change) Modify listbox.tcl so that PageUp and PageDown
+key bindings change the active element.
+
+4/6/95 (many fixes & features) Incorporate tk4.0b3 changes.
+*** POTENTIAL INCOMPATIBILITY ***
+
+3/23/95 (bug fix) Modified tkWindow so that Tk_CreateMainWindow()
+will not pass a null argument (screen) to the "frame" command -
+this was the real cause of the NULL dereference I tried to fix on
+3/20/95 - undo that first fix.
+
+3/21/95 (new feature) Modify tkFrame.c, tkListbox.c, tkText.c, and
+tkTextDisp.c to highlight the border of frame, listbox, and text
+widgets when they have the focus.
+
+3/20/95 (bug fix) Modified tkConfig.c so that DoConfig() wouldn't
+dereference a NULL value (thanks Peter da Silva).
+
+3/20/95 (bug fix) Modified tkWindow.c to destroy top-level children of
+main window (missed them before, and therefore wouldn't close display).
+
+3/15/95 (new feature) Modify ctkDisplay.c to put terminals in raw mode
+so that interrupt, quit, etc are passed as keys instead of generating
+signals.
+
+3/13/95 (bug fix) Modified tkTextMark.c to no longer dump core when the
+insert mark wraps across lines (put back InsertUndisplayProc() - why
+I removed it in the first place I have no idea).
+
+9/20/96 (port) Port ctk to tcl7.6: event handling (remove from ctk, call
+tcl's), channel handling. Should be better to reorganize code and
+merge in tk4.2 as another platform (Curses) -- Juanjo <jjciarla@raiz.uncu.edu.ar>
+
+7/16/97 (port) Port ctk to tcl8.0: change ctk.tcl to expect a higher version of tcl/tk.
+Still needs "grid" and a number of other enhancements. Michael (mschwart@nyx.net)

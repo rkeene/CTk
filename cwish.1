@@ -1,0 +1,187 @@
+.\" -*- cwish -*-
+.de TQ
+.br
+.ns
+.TP \\$1
+..
+.TH CWISH 1 "25 July 1995" "Cwish Version 4.0"
+.SH NAME
+cwish \- curses windowing shell
+.SH SYNOPSIS
+.B cwish
+[
+.I fileName
+]
+[
+.IR arg \|.\|.\|.\|
+]
+.SH DESCRIPTION
+\fBCwish\fR is a Tcl shell with the CTk toolkit extension added.
+The CTk toolkit is a port of the X11 Tk toolkit to curses.
+\fBCwish\fR creates a main window and then processes Tcl commands
+from a file, standard input or a dialog window.
+.PP
+If \fBcwish\fR is invoked with an initial \fIfileName\fR argument
+(cannot begin with ``\-''),
+then \fIfileName\fR is treated as the name of a script file.
+\fBCwish\fR will evaluate the script in \fIfileName\fR (which
+presumably creates a user interface), then it will respond to events
+until all windows have been deleted.
+Commands will not be read from standard input.
+.PP
+If \fIfileName\fR is not specified then \fBcwish\fR runs interactively.
+First, if there exists a file \fB.wishrc\fR in the home directory of
+the user, \fBcwish\fR evaluates the file as a Tcl script.
+If the display has not been redirected
+(via the \fB-display\fR option or \fBCTK_DISPLAY\fR environment variable),
+then a command dialog is displayed and \fBcwish\fR processes events
+until all windows have been deleted.
+Otherwise, \fBcwish\fR reads Tcl commands interactively from standard input.
+It will continue processing commands until all windows have been
+deleted or until end-of-file is reached on standard input.
+
+.SH OPTIONS
+.PP
+\fBCwish\fR automatically processes the following command-line options:
+.IP "\fB\-display \fIdevice\fR[:\fItype\fR]" 20
+Display device (and terminal type) on which to display window.
+If type is not specified then terminal type is defined by the
+\fBTERM\fR enviroment variable.
+.IP "\fB\-geometry \fIgeometry\fR" 20
+Initial geometry to use for window.  If this option is specified, its
+value is stored in the \fBgeometry\fR global variable of the application's
+Tcl interpreter.
+.IP "\fB\-name \fIname\fR" 20
+Use \fIname\fR as the title to be displayed in the window, and
+as the name of the application for processing options
+in the .ctkdefaults file.
+.IP "\fB\-\|\-\fR" 20
+Pass all remaining arguments through to the script's \fBargv\fR
+variable without interpreting them.
+This provides a mechanism for passing arguments such as \fB\-name\fR
+to a script instead of having \fBcwish\fR interpret them.
+.PP
+Any other command-line arguments besides these are passed through
+to the application using the \fBargc\fR and \fBargv\fR variables
+described later.
+
+.SH "APPLICATION NAME AND CLASS"
+.PP
+The name and class for an application are used for specifying options
+with a .ctkdefaults file
+(analogous to a .Xdefaults file).
+The application name is taken from the \fB\-name\fR option,
+if it is specified;
+otherwise it is taken from \fIfileName\fR, if it is specified,
+or from the command name by which \fBcwish\fR was invoked.
+In the last two cases, if the name contains a ``/''
+character, then only the characters after the last slash are used
+as the application name.
+The class of the application is the same as its name
+except that the first letter is capitalized.
+
+.SH "VARIABLES"
+.PP
+\fBCwish\fR sets the following Tcl variables:
+.TP 15
+\fBargc\fR
+Contains a count of the number of \fIarg\fR arguments (0 if none),
+not including the options described above.
+.TP 15
+\fBargv\fR
+Contains a Tcl list whose elements are the \fIarg\fR arguments
+that follow a \fB\-\|\-\fR option or don't match any of the
+options described in OPTIONS above, in order, or an empty string
+if there are no such arguments.
+.TP 15
+\fBargv0\fR
+Contains \fIfileName\fR if it was specified.
+Otherwise, contains the name by which \fBcwish\fR was invoked.
+.TP 15
+\fBgeometry\fR
+If the \fB\-geometry\fR option is specified, \fBcwish\fR copies its
+value into this variable.  If the variable still exists after
+\fIfileName\fR has been evaluated, \fBcwish\fR uses the value of
+the variable in a \fBwm geometry\fR command to set the main
+window's geometry.
+.TP 15
+\fBtcl_interactive\fR
+Contains 1 if \fBcwish\fR is reading commands interactively (\fIfileName\fR
+was not specified and standard input is a terminal-like
+device), 0 otherwise.
+
+.SH "SCRIPT FILES"
+.PP
+If you create a Tcl script in a file whose first line is
+.nf
+
+\fB#!/usr/local/bin/cwish\fR
+
+.fi
+then you can invoke the script file directly from your shell if
+you mark it as executable.
+This assumes that \fBcwish\fR has been installed in the default
+location in /usr/local/bin;  if it's installed somewhere else
+then you'll have to modify the above line to match.
+Many UNIX systems do not allow the \fB#!\fR line to exceed about
+30 characters in length, so be sure that the \fBcwish\fR executable
+can be accessed with a short file name.
+.PP
+An even better approach is to start your script files with the
+following three lines:
+.nf
+
+\fB#!/bin/sh
+# the next line restarts using cwish \e
+exec cwish "$0" "$@"\fR
+
+.fi
+This approach has three advantages over the approach in the previous
+paragraph.  First, the location of the \fBcwish\fR binary doesn't have
+to be hard-wired into the script:  it can be anywhere in your shell
+search path.  Second, it gets around the 30-character file name limit
+in the previous approach.
+Third, this approach will work even if \fBcwish\fR is
+itself a shell script (this is done on some systems in order to
+handle multiple architectures or operating systems:  the \fBcwish\fR
+script selects one of several binaries to run).  The three lines
+cause both \fBsh\fR and \fBcwish\fR to process the script, but the
+\fBexec\fR is only executed by \fBsh\fR.
+\fBsh\fR processes the script first;  it treats the second
+line as a comment and executes the third line.
+The \fBexec\fR statement cause the shell to stop processing and
+instead to start up \fBcwish\fR to reprocess the entire script.
+When \fBcwish\fR starts up, it treats all three lines as comments,
+since the backslash at the end of the second line causes the third
+line to be treated as part of the comment on the second line.
+.PP
+If your system does not have Tk installed, you may want to link
+cwish to plain "wish" so that scripts written for the Tk windowing
+shell will invoke cwish.  Beware that most Tk scripts require some
+modification to be usable with CTk.
+
+.SH "ENVIRONMENT VARIABLES"
+.IP CTK_DISPLAY 20
+Define this variable to display to a device other than standard input/output.
+The device can be followed by :\fIterm\fR to set the terminal type
+for the device.
+.IP CTK_LIBRARY 20
+Define this variable to override the CTK_LIBRARY path
+that was compiled into the cwish binary.
+.IP CTK_TERM 20
+Define this variable to override the value of the \fBTERM\fR
+enviroment variable.
+.IP TERM 20
+Defines the type of terminal for the standard input and output device.
+
+.SH AUTHOR
+Martin Andrews <andrewm@ccfadm.eeg.ccf.org>
+
+.SH BUGS
+Report bugs to andrewm@ccfadm.eeg.ccf.org.
+Include a complete, self-contained example
+that will allow the bug to be reproduced,
+and say which version of CTk and Tcl you are using.
+
+.SH "SEE ALSO"
+.BR tclsh (1)

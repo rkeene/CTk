@@ -1,0 +1,244 @@
+The CTk Toolkit
+
+by Martin Andrews
+andrewm@ccfadm.eeg.ccf.org
+
+@(#) $Id: ctk.shar,v 1.50 1996/01/15 14:47:16 andrewm Exp andrewm $
+
+1. Introduction
+----------------
+
+This directory contains the sources for CTk, a curses port of John
+Ousterhout's Tk toolkit for X11.  The information here corresponds to
+CTk 4.0.  CTk 4.0 is based on Tk 4.0p3. Like Tk 4.0p3, it is designed
+to work with Tcl 7.4p3 and may not work with other releases of Tcl.
+
+Using CTk, applications with a modern GUI-ish interface can be created
+for character terminals.  These same applications, without modification,
+can provide a real GUI interface by using Tk.  Thus, sites with an
+embedded base of character terminals (and a small capital budget) can
+smoothly migrate to GUI applications.
+
+2. Documentation
+----------------
+
+There is a man page for cwish (cwish(1)) explaining execution options
+for the CTk shell.  For script writing, the Tk Documentation, along with the
+list of differences in section 5 of this document should be enough to get
+started.
+
+3. Compiling and installing CTk
+-------------------------------
+
+CTk requires TCL and a System V curses package (CTk will build
+with BSD curses but has at least one display glitch and many
+missing features - see porting.notes for more information).
+Unlike Tk, you do not need the source for Tcl to build CTk.
+Only the Tcl 7.4 library and include file (tcl.h) are necessary.
+If your system does not have a System V compatible curses,
+there is a free version, ncurses, available in GNU archives
+(for instance ftp://prep.ai.mit.edu/pub/gnu).
+
+CTk builds cleanly on the three systems I have easy access to:
+
+    486 PC running Linux 1.1.54 using gcc 2.58 and ncurses 1.8.5
+
+    HP 9000/835 running HP-UX 9.04 using optional ANSI C compiler and
+    ncurses 1.8.6 or using K&R C compiler and hp curses (old system V,
+    not very pretty)
+
+    Sun 4c running Sun OS 4.13 using System V compiler (/usr/5bin/cc)
+    and System V curses
+
+Perform the following steps to compile and install CTk:
+
+    (a) Type "./configure" in this directory.  This runs a configuration
+	script created by GNU autoconf, which configures CTk for your
+	system and creates a Makefile.  If you are using ncurses, and
+	the library is named "libncurses" instead of "libcurses" give
+	the "-with-ncurses" option to configure.  Also, if Tcl or curses
+	are not installed in the standard search path, you can use
+	"-with-libdirs=" and "-with-incdirs=" to add directories to
+	the library and header search path, respectively (use the
+	directives once, the argument can be a list of space separated
+	directories).  For more details on using configure, check out
+	the autoconf documentation (not included here).
+
+    (b) Type "make".  This will create a library archive called "libctk.a"
+	and an interpreter application called "cwish" that allows you to type
+	Tcl commands interactively or execute script files.
+
+    (c) If the make fails then you'll have to personalize the Makefile
+        for your site or possibly modify the distribution in other ways.
+	First check the file "porting.notes" to see if there are hints
+	for compiling on your system.  If you need to modify Makefile,
+	there are comments at the beginning of it that describe the things
+	you might want to change and how to change them.
+	
+    (d) Type "make install" to install CTk's binaries and script files in
+        standard places.  In the default configuration, information will
+	be installed in /usr/local so you'll need write permission on
+	this directory.  If you'd like to use a default installation
+	directory, you can change the "exec_prefix" and "prefix" definitions
+	in the Makefile.
+
+    (e) At this point you can play with Tcl by invoking the "cwish"
+	program and typing Tcl commands.  However, if you haven't installed
+	CTk then you'll first need to set your CTK_LIBRARY environment
+	variable to hold the full path name of the "library" subdirectory.
+
+I am interested in receiving information on changes required to
+build CTk on your platform.
+
+4. Test suite
+-------------
+
+Next release.  (Really.)
+
+5. Getting started
+------------------
+
+It is now easy to run cwish interactively.  If you have not
+installed cwish set the CTK_LIBRARY environment variable to
+the path of the library directory, then try:
+
+    cwish
+
+This will start cwish, and then pop-up a command dialog window where
+you can enter TCL commands.  You can bring up this dialog at any time
+by pressing <Control-C>.
+
+You can also try out a simple demo of the cwish widgets with:
+
+    cwish library/demos/stuff
+
+There are other demos in the library/demos directory including a
+crude port of the Tk widget demo (warning it is easy for the focus
+to get lost - if so press Ctrl+C to get the command dialog and
+type "exit" there).
+
+Key bindings are very nearly the same as for Tk (which is very nearly
+the same as Motif).  This may be unfamiliar to people used to common
+Unix curses applications (elm, lynx, ..).  I decided to stick with the
+Tk binding for two reasons:
+
+1)  Less confusion for users that switch between Tk and CTk
+    versions of an application.
+
+2)  Easier to incorporate updates from Tk.
+
+Here is a quick summary of the key bindings for those unfamiliar
+with Motif (or Microsoft Windows):
+
+    <Space> activates/selects a widget
+    <Tab> moves focus to next the widget
+    <Shift-Tab> moves focus to the prior widget
+    <Return> activates the default button in a dialog
+    Arrow keys move the cursor within a widget
+    <F10> moves focus to the first menu
+    <Escape> closes a menu without making a selection
+
+Your terminal or terminfo entry may not support all the keys (like
+<Shift-Tab>).  See README.TERM for tips on configuring terminfo
+entries for CTk.
+
+6. Summary of differences between CTk 4.0b1 and Tk 4.0
+--------------------------------------------------------
+
+The following commands are not available in CTk:
+
+    canvas
+    clipboard
+    message
+    image
+    scale
+    selection
+    send
+
+The wm command is severely crippled.
+
+None of the widgets support the scan method.
+
+The text widget does not support tag bindings: "text tag bind".
+
+The text widget does not support embedded windows "text window".
+
+The -tearoff option for menu widgets can create a tearoff entry,
+but the entry doesn't work (and I don't know if there is any point
+in making it work).
+
+Many configuration options (like -background and -foreground) cannot
+be modified.  Attempts to set the unsupported options will silently
+be ignored.  Querying the options with cget will return a fixed
+?reasonable? value.  The unsupported options are:
+
+    -activebackground
+    -activeborderwidth
+    -activerelief
+    -background
+    -bg
+    -bitmap
+    -borderwidth (supported by widgets, not by text tags)
+    -colormap
+    -cursor
+    -disabledforeground
+    -exportselection
+    -fg
+    -font
+    -foreground
+    -highlightcolor
+    -highlightbackground
+    -highlightthickness
+    -image
+    -insertbackground
+    -insertborderwidth
+    -insertofftime
+    -insertontime
+    -insertwidth
+    -indicatoron
+    -jump
+    -relief
+    -repeatdelay
+    -repeatinterval
+    -screen
+    -selectbackground
+    -selectborderwidth
+    -selectcolor
+    -selectforeground
+    -selectimage
+    -setgrid
+    -tearoff
+    -troughcolor
+    -visual
+
+And a lot more I forgot to mention.
+
+7. Support and bug fixes
+------------------------
+
+Send bug reports and suggestions for improvements to:
+
+    Martin Andrews
+    andrewm@ccfadm.eeg.ccf.org
+
+When reporting bugs, please provide a short cwish script that I can
+use to reproduce the bug.  Make sure that the script runs with a
+bare-bones cwish and doesn't depend on any extensions.  Also, please
+include three additional pieces of information with the script:
+
+    (a) how do I use the script to make the problem happen (e.g.
+	what keys do you press, in what order)?
+    (b) what happens when you do these things (presumably this is
+        undesirable)?
+    (c) what did you expect to happen instead?
+
+For general problems with using Tk or Tcl, try posting to the
+comp.lang.tcl Usenet newsgroup.
+
+8. Release organization
+---------------------------
+
+Each CTk release is identified by two numbers separated by a dot, e.g.
+3.2 or 3.3.  These numbers match the release number of the corresponding
+Tk release.  Suffixes for alpha, beta, and patch releases (aX, bX, and pX
+respectively) are numbered independent of Tk.

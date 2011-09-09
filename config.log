@@ -1,0 +1,72 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+cc -E
+cc -E
+cc -E
+cc -c conftest.c
+cc -E
+cc -E
+cc -E
+cc -o conftest conftest.c
+cc -E
+cc -E
+cc -E
+cc -o conftest conftest.c
+configure: In function 'main':
+configure:1009: warning: incompatible implicit declaration of built-in function 'exit'
+cc -E
+cc -E
+cc -E
+cc -E
+cc -o conftest conftest.c -lcurses
+cc -E
+cc -o conftest conftest.c -lcurses
+cc -o conftest conftest.c -lcurses
+cc -o conftest conftest.c -lcurses
+cc -o conftest conftest.c -lcurses
+cc -c conftest.c
+cc -c conftest.c
+configure: In function 't':
+configure:1428: error: 'FILE' has no member named '_cnt'
+cc -c conftest.c
+configure: In function 't':
+configure:1444: error: 'FILE' has no member named '__cnt'
+cc -c conftest.c
+configure: In function 't':
+configure:1461: error: 'FILE' has no member named '_r'
+cc -c conftest.c
+configure: In function 't':
+configure:1478: error: 'FILE' has no member named 'readCount'
+cc -c conftest.c
+configure: In function 't':
+configure:1501: error: 'FILE' has no member named '_gptr'
+configure:1501: error: 'FILE' has no member named '_egptr'
+cc -c conftest.c
+cc -o conftest conftest.c -lcurses
+configure:1572: warning: conflicting types for built-in function 'sin'
+/tmp/ccYH09hj.o: In function `t':
+conftest.c:(.text+0x20): undefined reference to `sin'
+collect2: ld returned 1 exit status
+cc -o conftest conftest.c -lieee -lm -lcurses
+cc -o conftest conftest.c -lieee -lm -lcurses
+cc -o conftest conftest.c -lieee -lm -lcurses
+configure:1708: warning: conflicting types for built-in function 'memmove'
+cc -o conftest conftest.c -lieee -lm -lcurses
+configure: In function 'main':
+configure:1766: warning: incompatible implicit declaration of built-in function 'exit'
+configure:1768: warning: incompatible implicit declaration of built-in function 'exit'
+cc -o conftest conftest.c -lieee -lm -lcurses
+/tmp/cc6XWPiP.o: In function `t':
+conftest.c:(.text+0x20): undefined reference to `BSDgettimeofday'
+collect2: ld returned 1 exit status
+cc -E
+cc -o conftest conftest.c -lieee -lm -lcurses
+cc -o conftest conftest.c -lieee -lm -lcurses
+configure: In function 'main':
+configure:1935: warning: incompatible implicit declaration of built-in function 'exit'
+configure:1937: warning: incompatible implicit declaration of built-in function 'exit'
+cc -o conftest conftest.c -ltcl8.2 -lieee -lm -lcurses
+/usr/lib/gcc/i486-slackware-linux/4.3.3/../../../../i486-slackware-linux/bin/ld: cannot find -ltcl8.2
+collect2: ld returned 1 exit status
+cc -E

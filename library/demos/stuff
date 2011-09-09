@@ -1,0 +1,127 @@
+#!/usr/local/bin/cwish
+#
+# widget --
+#
+#	Test out CTk widgets.
+#
+
+proc dialog {} {
+    toplevel .panel
+    listbox .panel.files -selectmode multiple -height 15 \
+    	-yscrollcommand ".panel.scroll set"
+    pack .panel.files -side left
+    scrollbar .panel.scroll -command ".panel.files yview"
+    pack .panel.scroll -side left -fill y
+    foreach file [lsort [glob *]] {
+    	.panel.files insert end $file
+    }
+    button .panel.ok -text OK -command {
+    	set label OK
+    	destroy .panel
+    }
+    button .panel.cancel -text Cancel -command {
+    	set label Cancel
+    	destroy .panel
+    }
+    pack .panel.ok -side left
+    pack .panel.cancel -side right
+
+    set prior [focus]
+    grab set .panel
+    focus .panel.ok
+    tkwait window .panel
+    catch {focus $prior}
+}
+
+#
+# Create the menu bar
+#
+frame .menu
+pack .menu -side top -fill x
+
+menubutton .menu.file -text "File" -menu .menu.file.m -underline 0
+menu .menu.file.m
+.menu.file.m add command -label "Open.." -underline 0
+.menu.file.m add command -label "Close" -underline 0
+.menu.file.m add command -label "Print" -underline 0
+.menu.file.m add cascade -label "More" -underline 0 -menu .menu.file.m.more
+.menu.file.m add cascade -label "More2" -underline 4 -menu .menu.file.m.more2
+.menu.file.m add command -label "Exit" -underline 0 -command exit
+menu .menu.file.m.more
+.menu.file.m.more add radiobutton -label "I" -variable more -value 1
+.menu.file.m.more add radiobutton -label "II" -variable more -value 2
+.menu.file.m.more add radiobutton -label "III" -variable more -value 3
+.menu.file.m.more add radiobutton -label "IV" -variable more -value 4
+menu .menu.file.m.more2
+.menu.file.m.more2 add radiobutton -label "A" -variable more2 -value 1
+.menu.file.m.more2 add radiobutton -label "B" -variable more2 -value 2
+.menu.file.m.more2 add radiobutton -label "C" -variable more2 -value 3
+.menu.file.m.more2 add radiobutton -label "D" -variable more2 -value 4
+
+menubutton .menu.edit -text "Edit" -menu .menu.edit.m -underline 0
+menu .menu.edit.m
+.menu.edit.m add command -label "Undo" -underline 0
+.menu.edit.m add separator
+.menu.edit.m add command -label "Cut" -underline 2
+.menu.edit.m add command -label "Copy" -underline 0
+.menu.edit.m add command -label "Paste" -underline 0
+
+pack .menu.file .menu.edit -side left
+
+#
+# Some buttons
+#
+button .hi -text hello -command dialog
+label .junk -text "args: $argv"
+tk_optionMenu .option stooges Larry Curly Moe Shemp
+button .bye -text "Goodbye Cruel World" -underline 0 -wraplength 1i \
+	-command exit -borderwidth 2m
+button .unpack -text Unpack -command {pack forget .font}
+button .pack -text Pack -command {pack .font -after .pack}
+pack .hi .junk .option .bye .unpack .pack
+
+#
+# A radio box
+#
+frame .font
+pack .font
+radiobutton .times -text Times -variable font -value times -anchor w
+radiobutton .helvetica -text Helvetica -variable font -value helvetica -anchor w
+radiobutton .courier -text Courier -variable font -value courier -anchor w
+radiobutton .symbol -text Symbol -variable font -value symbol -anchor w
+pack .times .helvetica .courier .symbol -in .font -side top -fill x
+label .fontlabel -textvariable font
+pack .fontlabel -in .font -side top
+set font times
+
+#
+# And an entry field
+#
+frame .field
+label .label -text "Entry:"
+entry .entry -width 20 -justify center
+label .copy
+pack .label .entry .copy -in .field -side left
+
+#
+# A text widget
+#
+frame .src
+text .src.text -yscrollcommand ".src.scroll set" -wrap none -width 40 -height 15
+scrollbar .src.scroll -command ".src.text yview" -takefocus 1
+pack .src.scroll -side right -fill y
+pack .src.text -side left
+.src.text delete 1.0 end
+set f [open /etc/passwd]
+while {![eof $f]} {
+    .src.text insert end [read $f 1000]
+}
+close $f
+.src.text tag add head 1.0 3.end
+.src.text tag configure head -underline 1
+.src.text mark set insert 1.0
+
+pack .font .field .src -side left
+
+
+focus .hi

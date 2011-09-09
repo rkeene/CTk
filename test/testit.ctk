@@ -1,0 +1,4824 @@
+#!/usr/local/bin/cwish
+
+
+################################################################################
+#   CONSTANTS:
+################################################################################
+
+################################################################################
+#
+# Create Entry Errors List Box
+#
+proc ToorCreateErrorDialog { title } {
+
+    toplevel  .csds_errors -borderwidth 1
+    wm        geometry .csds_errors "+0+0" 
+    label     .csds_errors.message -text "$title - Entry Errors\n"
+    pack      .csds_errors.message -side top
+    label     .csds_errors.msg2 \
+              -text "The following entry errors have been found:" \
+              -justify left -anchor w
+    pack      .csds_errors.msg2 -side top -fill x
+    frame     .csds_errors.box
+    pack      .csds_errors.box -fill x
+    listbox   .csds_errors.box.list -height 5 -width 60 -borderwidth 1 \
+              -yscrollcommand ".csds_errors.box.scroll set"
+    pack      .csds_errors.box.list -side left
+    scrollbar .csds_errors.box.scroll -command ".csds_errors.box.list yview"
+    pack      .csds_errors.box.scroll -side left -fill y
+    button    .csds_errors.ok -text "OK" -borderwidth 1 \
+              -command "destroy .csds_errors"
+    pack      .csds_errors.ok -side top
+    focus     .csds_errors.ok
+
+    label     .csds_errors.msg3 \
+              -text "Press function key <F3> to change windows" \
+              -justify left -anchor w
+    pack      .csds_errors.msg3 -side top -fill x
+
+    return    .csds_errors.box.list
+
+}
+
+################################################################################
+#
+# Display Entry Errors 
+# Note that this impementation is less robust than the "C" implementation:
+#    1) Label must be less than 55 characters
+#    2) there MUST be a space after the label but before the end of the
+#       line
+#    3) Tabs are ignored, so they will probably do bad things
+#    4) width is fixed at 60 characters
+#    5) Window is always displayed in the upper right-hand corner of the screen
+#    6) There are no Error Widgets next to the f 
+#
+proc ToorDisplayErrors { title args } {
+
+    set blanks "                                                              "
+
+    if { [ llength $args ] >= 2 } {
+        set msg_box [ ToorCreateErrorDialog $title ]
+
+        set index 1
+        for {set i [expr [llength $args]-1]} {$i>0} {incr i -2} {
+
+            set e_label [lindex $args 0];  set args [lrange $args 1 end]
+            set e_text [lindex $args 0]; set args [lrange $args 1 end]
+    
+            set e_line "$index. $e_label - "
+            set indnt [ expr [ string length $e_line ] - 1]
+            set e_line "$e_line$e_text"
+
+            while { [ string length $e_line ] > 60 } {
+                set end_idx [ string last " " [ string range $e_line 0 59 ] ]
+
+                $msg_box insert end [ string range $e_line 0 $end_idx ]
+                set e_line \
+  "[string range $blanks 0 $indnt][string range $e_line [expr $end_idx+1] end]"
+            }
+
+            $msg_box insert end "$e_line"
+            $msg_box insert end ""
+
+            incr index 1
+        }
+        return F
+    } else {
+        return T
+    }
+
+}
+
+################################################################################
+#
+# Add error to argument list if error is non-null
+#
+proc ToorAddToErrorList { err_list field error } {
+    upvar $err_list his_list
+    if { $error != "" } {
+        lappend his_list $field $error
+    }
+}
+
+################################################################################
+#
+# Destroy Entry Errors List Box, if it exists
+#
+proc ToorDestroyEntryErrorsList { } {
+    if [ winfo exists .csds_errors ] {
+        destroy .csds_errors
+    }
+}
+
+
+set TOOR_MY_NAME [info script]
+
+set TOOR_DATA_DIR             "/asas/data"
+set TOOR_INIT_DIR             "/etc/init_asas.d"
+set TOOR_LOG_FILE             "/var/log/bootup"
+set TOOR_TFTP_DIR             "/usr/tftpdir"
+set TOOR_DEFAULT_DOMAIN_FILE  "/etc/defaultdomain"
+
+set TOOR_HOST_FILE            "/etc/hosts"
+set TOOR_FDDI_HOSTNAME        "/etc/hostname.nf0"
+
+set TOOR_BEACON_COMMAND_FILE  "/home/users/address/beacon.command"
+set TOOR_ORG_IP_UNL_FILE      "/home/users/address/unl/org_ip.unl"
+set TOOR_ORGANIZ_UNL_FILE     "/home/users/address/unl/organiz248.unl"
+set TOOR_UNL_CELL_INDEX       0
+set TOOR_UNL_IP_INDEX         1
+set TOOR_UNL_HOST_INDEX       3
+set TOOR_UNL_ROLE_INDEX       4
+set TOOR_UNL_ROLE_TYPE_INDEX  6
+set TOOR_UNL_OR_NAME_INDEX    7
+set TOOR_UNL_URN_INDEX        8
+set TOOR_UNL_UIC_INDEX        10
+set TOOR_ORG_CELL_INDEX       0
+set TOOR_ORG_ORG_INDEX        2
+
+
+set TOOR_ORACLE_BOOT_FILE     "/etc/init.d/dbora"
+
+set TOOR_CURRENT_CONFIG_DIR   "$TOOR_DATA_DIR/current"
+set TOOR_LAST_CONFIG_DIR      "$TOOR_DATA_DIR/last"
+set TOOR_NEW_CONFIG_DIR       "$TOOR_DATA_DIR/new"
+
+set TOOR_DEFAULT_ENCLAVE_FILE "$TOOR_INIT_DIR/enclave_id"
+set TOOR_BEACON_BOOT_FILE     "$TOOR_INIT_DIR/start_address_book"
+set TOOR_SDR_BOOT_FILE        "$TOOR_INIT_DIR/toor_inet_supplement.sh"
+set TOOR_VALIDATE             "$TOOR_INIT_DIR/toor_form_validation_services.ctk"
+set TOOR_PE_SITE_FILE         "/opt/dcelocal/etc/security/pe_site"
+
+set TOOR_MASTER_NAME_FILE     "subsystem_master"
+set TOOR_CELL_NAME_FILE       "cell_name"
+set TOOR_DCE_MASTER_FILE      "dce_master"
+set TOOR_HOST_ID_FILE         "hostid"
+set TOOR_INTERFACE_FILE       "interface"
+set TOOR_USE_BEACON_FILE      "beacon_use"
+set TOOR_OR_NAME_FILE         "or_name"
+set TOOR_FDDI_OR_NAME_FILE    "fddi_or_name"
+set TOOR_UIC_FILE             "unit_id_code"
+set TOOR_DOMAIN_SUFFIX_FILE   "suffix.dat"
+set TOOR_ENCLAVE_FILE         "enclave_id"
+set TOOR_RECONFIG_NAME        "reconfig_needed"
+set TOOR_LEFT_VIDEO_FILE      "left_video"
+set TOOR_RIGHT_VIDEO_FILE     "right_video"
+set TOOR_LEFT_VIDEO_CMD_FILE  "left_video_cmd"
+set TOOR_RIGHT_VIDEO_CMD_FILE "right_video_cmd"
+set TOOR_SDR_FILE             "sdr"
+set TOOR_CLIENTS_FILE         "clients"
+set TOOR_OUR_ORGANIZ_FILE     "our_organiz"
+set TOOR_OUR_ROLE_TYPE_FILE   "our_role_typ"
+set TOOR_OUR_ROLE_FILE        "our_role"
+set TOOR_OUR_URN_FILE         "unit_ref_num"
+set TOOR_FDDI_ORGANIZ_FILE    "fddi_organiz"
+set TOOR_FDDI_ROLE_TYPE_FILE  "fddi_role_typ"
+set TOOR_FDDI_ROLE_FILE       "fddi_role"
+set TOOR_MST_ORGANIZ_FILE     "asas_organiz"
+set TOOR_MST_ROLE_TYPE_FILE   "asas_role_typ"
+set TOOR_MST_ROLE_FILE        "asas_role"
+set TOOR_DCE_ORGANIZ_FILE     "dce_organiz"
+set TOOR_DCE_ROLE_TYPE_FILE   "dce_role_typ"
+set TOOR_DCE_ROLE_FILE        "dce_role"
+set TOOR_LIST_FILE            "list_selection"
+
+
+set TOOR_CELL_ADMIN_PW        ".cell_admin"
+
+set TOOR_RECONFIG_FILE        "$TOOR_NEW_CONFIG_DIR/$TOOR_RECONFIG_NAME"
+set TOOR_NEED_ACCTS_FILE      "$TOOR_NEW_CONFIG_DIR/default_accounts"
+
+set TOOR_BEACON_OFF_LIST      " $TOOR_BEACON_BOOT_FILE "
+set TOOR_BEACON_ON_LIST       " $TOOR_BEACON_BOOT_FILE.off "
+
+set TOOR_BEACON_PASS1_OFF_LIST " /etc/rc3.d/S38sendmail \
+                                 /etc/rc3.d/s38sendmail.beacon \
+                                 /etc/rc3.d/S20ncs \
+                                 /etc/rc3.d/S21netls \
+                                 /etc/rc3.d/S22ncs \
+                                 /etc/rc3.d/S23netls \
+                                 /etc/rc3.d/S25dce \
+                                 /etc/rc3.d/S26dce \
+                                 /etc/rc3.d/S15-10dce-clean \
+                                 /etc/rc3.d/S15-20dce \
+                                 /etc/rc3.d/S15-70dfs \
+                                 /etc/rc3.d/S16dfs-gateway "
+
+set TOOR_BEACON_PASS1_ON_LIST  " /etc/rc3.d/s38sendmail \
+                                 /etc/rc3.d/S38sendmail.beacon \
+                                 /etc/rc3.d/s20ncs \
+                                 /etc/rc3.d/s21netls \
+                                 /etc/rc3.d/s22ncs \
+                                 /etc/rc3.d/s23netls \
+                                 /etc/rc3.d/s25dce \
+                                 /etc/rc3.d/s26dce 
+                                 /etc/rc3.d/s15-10dce-clean \
+                                 /etc/rc3.d/s15-20dce \
+                                 /etc/rc3.d/s15-70dfs \
+                                 /etc/rc3.d/s16dfs-gateway "
+
+set TOOR_SDR_ON_LIST          " $TOOR_SDR_BOOT_FILE "
+set TOOR_SDR_OFF_LIST         " $TOOR_SDR_BOOT_FILE.off "
+
+set TOOR_MASTER_OFF_LIST      " $TOOR_ORACLE_BOOT_FILE.off "
+set TOOR_MASTER_ON_LIST       " $TOOR_ORACLE_BOOT_FILE "
+
+set TOOR_FDDI_ON_LIST         " /etc/rc2.d/S98nf_fddidaemon "
+set TOOR_FDDI_OFF_LIST        " /etc/rc2.d/s98nf_fddidaemon "
+
+set TOOR_CRONTAB_HOME	      "/home/users/overlay/caid_crontab"
+set TOOR_CRONTAB_DEST	      "/var/spool/cron/crontabs/overlay"
+
+################################################################################
+#
+# Write message to the log file
+#
+proc ToorLogMessage { msg } {
+    global TOOR_LOG_FILE TOOR_MY_NAME
+    catch { exec /usr/bin/echo "$TOOR_MY_NAME : $msg " >> $TOOR_LOG_FILE } \
+            ret_code
+}
+
+################################################################################
+#
+#  bindings for sun keyboard to make this slightly easier to use
+#
+bind Button <Return> {
+    tkButtonInvoke %W
+}
+
+bind Checkbutton <Return> {
+    tkCheckRadioInvoke %W
+}
+ 
+bind Radiobutton <Return> {
+    tkCheckRadioInvoke %W
+}
+
+bind all <F1> {focus [tk_focusPrev %W]}
+
+proc ctk_menu {} {
+    if ![winfo exists .ctkMenu] {
+        menu .ctkMenu
+        .ctkMenu add command -label "Redraw (R)" -underline 8 \
+                -command {ctk redraw .ctkMenu}
+        .ctkMenu add command -label "Exit (X)" -underline 6 -command exit
+    }
+    tk_popup .ctkMenu 0 0 0
+}
+
+bind all <Control-c> ctk_menu
+bind all <F2> ctk_menu
+bind all <F3> {ctkNextTop [focus]}
+bind all <F4> {set toor_go_back_to_first_menu N}
+bind all <F5> {set toor_go_back_to_first_menu Y}
+
+if [ file exists $TOOR_VALIDATE ] {
+    source $TOOR_VALIDATE
+} else {
+    ToorLogMessage "=== UNABLE TO FIND $TOOR_VALIDATE ==="
+}
+
+################################################################################
+#
+#  Fills input frame with a text label to side $side of a created subframe
+#
+proc ToorLabelledSubframe { frame name text side border } {
+    if {![winfo exists $frame]} {
+        frame $frame
+    }
+    label $frame.label -text $text
+    frame $frame.$name -borderwidth $border
+    pack $frame.label $frame.$name -side $side -anchor w
+    pack $frame -side top -anchor w -fill x
+    return $frame.$name
+}
+
+################################################################################
+#
+#  Creates an entry box of size width, with the initial value from global 
+#  variable var and with a text label 
+#
+proc ToorLabelledEntry { frame text width var side state } {
+    upvar #0 $var glob
+    set initial_value $glob  ;# so can use input global as the output
+    frame $frame
+    label $frame.label -text $text
+    entry $frame.entry -width $width -borderwidth 1 -textvariable $var
+    $frame.entry delete 0 [string length [$frame.entry get]]
+    $frame.entry insert 0 "$initial_value"
+    $frame.entry configure -state $state
+    set entry_cmd [ list $frame.entry selection range 0 ]
+    set entry_cmd [ concat $entry_cmd { [string length [ } \
+                    $frame.entry get {]]} ]
+    bind $frame.entry <FocusIn>  $entry_cmd
+    bind $frame.entry <FocusOut> "$frame.entry selection range 0 0"
+    pack $frame.label $frame.entry -side $side -padx 0
+}
+
+################################################################################
+#
+#  Creates an empty entry box of size 9, that will echo a * for each input
+#  character 
+#
+proc ToorLabelledPasswordEntry { frame name state text} {
+    frame $frame
+    entry $frame.$name -show "*" -width 9 -borderwidth 1 -state $state
+    label $frame.l1 -text $text
+    pack $frame.$name $frame.l1 -side right
+    return $frame.$name
+}
+
+################################################################################
+#
+#  Creates a set of radiobuttons with a text label 
+#
+proc ToorLabelledRadiobuttons { frame text var state side border args } {
+    if {![winfo exists $frame]} {
+        frame $frame -borderwidth $border
+    }
+    set inner_frame [ ToorLabelledSubframe $frame buttons $text $side 0 ]
+
+    for {set i [expr [llength $args]-1]} {$i>0} {incr i -2} {
+        set b_text [lindex $args 0];  set args [lrange $args 1 end]
+        set b_value [lindex $args 0]; set args [lrange $args 1 end]
+        set b_name [string tolower $b_value]
+        radiobutton $inner_frame.$b_name -text $b_text -anchor w \
+                    -value $b_value -variable $var -state $state
+        pack $inner_frame.$b_name -side $side -anchor w
+    }
+}
+
+################################################################################
+#
+#  Creates a set of labelled pushbuttons 
+#
+proc ToorButtonSet { frame default ans_var wait_var args } {
+    frame $frame
+    for {set i [expr [llength $args]-1]} {$i>0} {incr i -2} {
+        set b_text [lindex $args 0];  set args [lrange $args 1 end]
+        set b_value [lindex $args 0]; set args [lrange $args 1 end]
+        button $frame.b$i -text $b_text -borderwidth 1 \
+            -command "set $ans_var $b_value; set $wait_var 0"
+        pack $frame.b$i -side left -fill x
+        if {$default == $b_value} {
+            focus $frame.b$i
+        }
+    }
+}
+
+#################################################################################
+#  Display a hostname in an entry box with a preceding label 
+#
+proc ToorDisplayHost { frame var side state } {
+     ToorLabelledEntry $frame "Host Name:" 8 $var $side $state
+}
+
+################################################################################
+#
+#  Display an ip address in an entry box with a preceding label 
+#
+proc ToorDisplayIp { frame var side state } {
+     ToorLabelledEntry $frame "IP Address:" 15 $var $side $state
+}
+
+################################################################################
+#
+#  Display a host id (machine id) in an entry box with a preceding label 
+#
+proc ToorDisplayHostId { frame id } {
+     ToorLabelledEntry $frame "Host Id:" 8 $id top disabled
+}
+
+################################################################################
+#
+#  Display a unix/nis+ domain in an entry box with a preceding label 
+#
+proc ToorDisplayDomain { frame var side state } {
+    ToorLabelledEntry $frame "Domain:" 22 $var $side $state
+}
+
+################################################################################
+#
+#  Display a organization/role in an entry box with a preceding label 
+#
+proc ToorDisplayOrName { frame var side state } {
+    ToorLabelledEntry $frame "O/R Name: " 33 $var $side $state
+}
+
+################################################################################
+#
+#  Display a organization/role in an entry box with a preceding label
+#  (short version truncates 3 characters)
+#
+proc ToorDisplayOrNameS { frame var side state } {
+    ToorLabelledEntry $frame "O/R Name:" 30 $var $side $state
+}
+
+################################################################################
+#
+#  Display an enclave code in an entry box with a preceding label
+#  Allows only two characters, doesn't allow scrolling past second char
+#  Note: ctk does not recognize the KeyRelease event, hence the bizarre
+#  delay and the catches in case the window has bee taken down
+#
+proc ToorDisplayEnclave { frame side state } {
+    global toor_enclave_frame
+    ToorLabelledEntry $frame "Enclave:" 2 toor_vars(new,enclave) top $state
+    pack $frame -side $side -anchor w
+    set toor_enclave_frame "$frame.entry"
+    bind $frame.entry <Key> {
+        after 2 {
+            if { [winfo exists $toor_enclave_frame] } {
+                catch { set en_len [ string length [$toor_enclave_frame get]] }\
+                      ret_code
+                if { $en_len == 2 } {
+                    catch { $toor_enclave_frame xview 0 } ret_code
+                    catch { $toor_enclave_frame icursor 2 } ret_code
+                } elseif { $en_len > 2 } {
+                    catch { $toor_enclave_frame delete 0 [ expr $en_len - 2] } \
+                          ret_code
+                    catch { $toor_enclave_frame xview 0 } ret_code
+                    catch { $toor_enclave_frame icursor 2 } ret_code
+                }
+            }
+        }
+    }
+}
+
+################################################################################
+#
+#  Display a Unit Identification code in an entry box with a preceding label 
+#
+proc ToorDisplayUic { frame var label_side side state } {
+    ToorLabelledEntry $frame "UIC:" 6 $var $label_side $state
+    pack $frame -side $side -anchor w
+}
+
+################################################################################
+#
+#  Display a Unit Reference Number in an entry box with a preceding label 
+#
+proc ToorDisplayUrn { frame var label_side side state } {
+    ToorLabelledEntry $frame "URN:" 7 $var $label_side $state
+    pack $frame -side $side -anchor w
+}
+
+
+################################################################################
+#
+#  Display the DCE Cell name in an entry box with a preceding label 
+#
+proc ToorDisplayDceCell { frame var side state } {
+    ToorLabelledEntry $frame "DCE Cell Name:" 30 $var $side $state
+    pack $frame -side top
+}
+
+################################################################################
+#
+#  Set up labelled set of radiobuttons asking if address book and beacon
+#  should be used 
+#
+proc ToorDisplayBeaconInUse { frame state } {
+    ToorLabelledRadiobuttons $frame "Address Book / Beacon in use:" \
+                          toor_vars(new,beacon_is_being_used) $state left 0 \
+                          "Yes"    beacon \
+                          "No"     nobeacon
+}
+
+################################################################################
+#
+# Display number of seconds until no longer display top screen, value is
+# updated as textvariable toor_seconds_to_go is decremented
+#
+proc ToorDisplaySecondsLeft { frame } {
+    global toor_seconds_to_go
+    frame $frame
+    frame $frame.f1
+    label $frame.l1 -text "\"No\" will be assumed if no response is received in"
+
+    label $frame.f1.l1 -textvariable toor_seconds_to_go
+    label $frame.f1.l2 -text         "seconds"
+    pack  $frame.f1.l1 $frame.f1.l2 -side left
+    pack  $frame.l1    $frame.f1    -side top
+    pack  $frame       -side top
+}
+
+################################################################################
+#
+# Display the Yes/No change of configuration wanted buttons
+#
+proc ToorDisplayYesNo { frame default } {
+    ToorButtonSet $frame $default toor_want_to_change_ans toor_seconds_to_go \
+               "Yes" Y \
+               "No"  N
+    pack $frame -side top
+
+}
+
+################################################################################
+#
+# Display a scrolled list box with an accompanying entry box
+#
+proc ToorDisplayList { frame title lines width var side entry_list } {
+    upvar     $entry_list e_list
+    catch     {destroy $frame} err_code
+    frame     $frame
+    frame     $frame.entry
+    ToorLabelledEntry $frame.entry.info $title $width $var top normal
+    pack      $frame.entry -side top -fill x
+    pack      $frame.entry.info -side left -fill x
+    frame     $frame.sb
+    pack      $frame.sb -side top
+    scrollbar $frame.sb.scroll -command "$frame.sb.list yview" -takefocus 0
+    listbox   $frame.sb.list -yscroll "$frame.sb.scroll set" -height $lines \
+                             -width $width -selectmode single
+    pack      $frame.sb.scroll -side right -fill y
+    pack      $frame.sb.list   -side left -fill both
+
+    pack      $frame -side $side
+    set       e_list [ concat $e_list $frame.entry.info.entry ]
+    return    $frame.sb.list
+}
+
+#################################################################################
+# reconfigure the window in "controlled" to be enabled only if there is
+# at least one character in the "test_entry" field
+#
+proc ToorDecideToEnable { controlled test_entry } {
+    if { [string length [$test_entry get] ] != 0 } {
+        $controlled configure -state normal
+    } else {
+        $controlled delete 0 \
+            [string length [$controlled get]]
+        $controlled configure -state disabled
+    }
+}
+
+################################################################################
+#
+# Selectively enable the windows on the enable_if_on list and disable those
+# on the enable_if_off list based on the value of var.  (Or vice versa)
+#
+proc ToorSelectEntryMethod { enable_if_on enable_if_off var } {
+    upvar #0 $var select_var
+
+    if { $select_var } {
+        set state 1
+    } else {
+        set state 0
+    }
+
+    foreach listbx $enable_if_on {
+        $listbx configure -takefocus $state
+    }
+
+    if { $select_var } {
+        set state 0
+    } else {
+        set state 1
+    }
+
+    foreach listbx $enable_if_off {
+        $listbx configure -takefocus $state
+    }
+}
+
+################################################################################
+#
+# prompts for password and sets up entry boxes that echo "*" rather than
+# the character -- ToorDecideToEnable is bound to keypresses in password
+# field making the verify password sensitive only if there's an entry
+# in the password
+#
+proc ToorPasswordPrompt { frame pw_var verf_var } {
+    upvar $pw_var   pw
+    upvar $verf_var verf
+    frame   $frame
+    set sub_frame [ ToorLabelledSubframe $frame passwords \
+                 "If password is unchanged, make no entry and select \"OK\"\n" \
+                  top 0 ]
+
+    set pw [ToorLabelledPasswordEntry $sub_frame.f1 cell_password  normal \
+            "New Password: "]
+    set verf [ToorLabelledPasswordEntry $sub_frame.f2 verify_password disabled \
+            "Retype Password to Verify: "]
+    bind $pw <Key> "ToorDecideToEnable $verf $pw"
+
+    pack $sub_frame.f1 $sub_frame.f2 -side top -fill x
+}
+
+################################################################################
+#
+# Assure that the named directory exists, and create it if not
+#
+proc ToorAssureDirectoryExists { direct } {
+    if { ! [file exists $direct] } {
+        catch { [ exec /usr/bin/mkdir $direct ] } ret_code
+        catch { [ exec /usr/bin/chmod 755 $direct ] } ret_code
+    }
+}
+
+################################################################################
+#
+# Assure that the directories we need exists, and create them if not
+#
+proc ToorCheckHaveDirectories { } {
+    global TOOR_DATA_DIR TOOR_CURRENT_CONFIG_DIR TOOR_LAST_CONFIG_DIR \
+           TOOR_NEW_CONFIG_DIR
+
+    ToorAssureDirectoryExists [ file dirname $TOOR_DATA_DIR ]
+    ToorAssureDirectoryExists $TOOR_DATA_DIR
+    ToorAssureDirectoryExists $TOOR_CURRENT_CONFIG_DIR
+    ToorAssureDirectoryExists $TOOR_LAST_CONFIG_DIR
+    ToorAssureDirectoryExists $TOOR_NEW_CONFIG_DIR
+}
+
+################################################################################
+#
+# Find list of ethernet interfaces on this workstation
+#
+proc ToorGetEthernetInterfaces { } {
+    global toor_interfaces toor_fddi_present
+    set local_interfaces "le0"
+    catch { set local_interfaces [ exec /etc/prtconf \| /usr/bin/awk "BEGIN {len=0\;hmen=0} \$1 ~ /^(.+,)*le\[,]*\$/{print \"le\"len++} \$1 ~ /^(.+,)*hme\[,]*\$/{print \"hme\"hmen++}" ] } ret_code
+    set toor_interfaces [ split $local_interfaces " \n" ]
+    set local_fddi ""
+    catch { set local_fddi [  exec /etc/prtconf \| /usr/bin/egrep "\[ ,\\t]nf\[ ,]" ] } ret_code
+    set toor_fddi_present [ expr "{$local_fddi} == {} ? 0 : 1" ]
+}
+
+################################################################################
+#
+# Save last 5 boot log files, move each file back one level
+#
+proc ToorAgeLogFiles { } {
+    global TOOR_LOG_FILE TOOR_MY_NAME
+
+    for {set file_no 5} {$file_no > 1} {incr file_no -1} {
+        set old_file [ expr "$file_no - 1"]
+        catch { exec /usr/bin/mv -f $TOOR_LOG_FILE.$old_file \
+                                 $TOOR_LOG_FILE.$file_no } ret_code
+    } 
+    catch { exec /usr/bin/mv -f $TOOR_LOG_FILE $TOOR_LOG_FILE.1 } ret_code
+    catch { set time_is  [ exec /usr/bin/date ] } ret_code
+    catch { exec /usr/bin/echo \
+            "$TOOR_MY_NAME : $time_is" > $TOOR_LOG_FILE } ret_code
+    catch { exec /usr/bin/chown root $TOOR_LOG_FILE } ret_code
+    catch { exec /usr/bin/chgrp root $TOOR_LOG_FILE } ret_code
+    catch { exec /usr/bin/chmod 644 $TOOR_LOG_FILE } ret_code
+    ToorLogMessage "prompting user for reconfiguration"
+
+}
+
+################################################################################
+#
+# read in the unl file named by file_name and return the lines in unl_list,
+# the entries on the lines, separated by "|"s becomes sublists
+# values are trimmed of leading & trailing blanks.  
+#
+proc ToorCacheUnl { file_name unl_list {skip 1} } {
+    upvar 1 $unl_list unl
+    set to_skip $skip
+    set unl {}
+    set org_unl -1
+    catch { set org_unl [ open $file_name r ] } ret_code
+    if { $org_unl != -1 } {
+        while { [ gets $org_unl organiz_line ] >= 0 } {
+            if { [ incr to_skip -1 ] < 0 } {
+                set org_parts [ split $organiz_line "|" ]
+                set trimmed_parts {}
+                foreach org_item $org_parts {
+                lappend trimmed_parts [ string trim $org_item ]
+                }
+                lappend unl $trimmed_parts
+            }
+        }
+        catch { close $org_unl } ret_code
+    }
+    
+    return
+}
+
+################################################################################
+#
+# Check if input value is a valid DCE Cell name
+# Losely based on DNS hostname specification
+#
+proc ToorCheckCellName { cell } {
+
+    if [ regexp \
+{^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])*(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])*)*$} \
+         $cell ] {
+        if { [ string length $cell ] <= 255 } {
+            return ""
+        } else {
+            return "cell name must be 255 or fewer characters"
+        }
+    } else {
+        return "cell name must be present and may contain only letters, numbers, and embedded \"-\"s and \".\"s"
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid domain name
+# Fairly restrictive specification based on RFC 819, see also RFC 1035 for
+# length.
+#
+proc ToorCheckDomainname { domain } {
+
+    if [ regexp \
+{^[A-Za-z]([A-Za-z0-9-]*[A-Za-z0-9])*(\.[A-Za-z]([A-Za-z0-9-]*[A-Za-z0-9])*)*$}\
+         $domain ] {
+        if { [ string length $domain ] <= 255 } {
+            return ""
+        } else {
+            return "Domain Name must be 255 or fewer characters"
+        }
+    } else {
+        return "Domain Name must be present and may contain only letters, numbers, and embedded \"-\"s and \".\"s"
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid organization name
+# At present, test prohibits only the "|" char that is used as a separator.
+# String may not start or end with spaces
+#
+proc ToorCheckOganization { organiz } {
+
+    if [ regexp {^[^| ]+([^|]*[^| ]+)*$} $organiz ] {
+        return ""
+    } else {
+        return "Organization name must be present, may not contain \"|\"s and must not start or end with a space"
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid organization name, in cases where 
+# An entry is optional.
+#
+proc ToorCheckOptOganization { organiz } {
+
+    if { $organiz == "" } {
+        return ""
+    } elseif [ regexp {^[^| ]+([^|]*[^| ]+)*$} $organiz ] {
+        return ""
+    } else {
+        return "Organization name may not contain \"|\"s and must not start or end with a space.  It may be omitted."
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid role type
+# At present, test prohibits only the "|" char that is used as a separator.
+# String may not start or end with spaces
+#
+proc ToorCheckRoleType { role_type } {
+
+    if [ regexp {^[^| ]+([^|]*[^| ]+)*$} $role_type ] {
+        return ""
+    } else {
+        return "Role Type must be present, may not contain \"|\"s and must not start or end with a space"
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid role type, used in cases where 
+# an entry is optional.
+#
+proc ToorCheckOptRoleType { role_type } {
+
+    if { $role_type == "" } {
+        return ""
+    } elseif [ regexp {^[^| ]+([^|]*[^| ]+)*$} $role_type ] {
+        return ""
+    } else {
+        return "Role Type may not contain \"|\"s and must not start or end with a space.  It may be omitted."
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid role
+# At present, test prohibits only the "|" char that is used as a separator.
+# String may not start or end with spaces
+#
+proc ToorCheckRole { role } {
+
+    if [ regexp {^[^| ]+([^|]*[^| ]+)*$} $role ] {
+        return ""
+    } else {
+        return "Role must be present, may not contain \"|\"s and must not start or end with a space"
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid role, used in cases where 
+# an entry is optional.
+#
+proc ToorCheckOptRole { role } {
+
+    if { $role == "" } {
+        return ""
+    } elseif [ regexp {^[^| ]+([^|]*[^| ]+)*$} $role ] {
+        return ""
+    } else {
+        return "Role may not contain \"|\"s and must not start or end with a space.  It may be omitted."
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid host name
+# Names meet most generous standards - excluding only the tab and space
+# delimiters (used in /etc/hosts), the dot (DNS domain delimiter), the
+# "|" (used by the address book) and control characters.
+# Length is from Internic RFC 1035, and is consistent with DANTE.
+# Note that RFC 1123 extends host name to 255 characters
+#
+proc ToorCheckHostname { host } {
+
+    if [ regexp "^\[^.|\001-\ ]+\$" $host ] {
+        if { [ string length $host ] <= 64 } {
+            return ""
+        } else {
+            return "Host Name must be 64 or fewer characters"
+        }
+    } else {
+        return "Host Name must be present and must not contain spaces, tabs, \"|\"s or \".\"s"
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid ip address
+# Local Address portion = 0 refers to this host,
+# Local Address portion = all ones is multicast (broadcast)
+#   If network is subnetted, additional addresses may be reserved - but are
+#   allowed by this routine.  See Internic RFC 1700 (also RFC 790, RFC 1035)
+#   URL = ftp://ftp.isi.edu/in-notes/iana/assignments/introduction
+#   Or: http://sunsite.auc.dk/RFC/std/std2.html
+#
+proc ToorCheckIPAddr { ip } {
+
+    if [ regexp {^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$} $ip \
+                 whole octet1 octet2 octet3 octet4 ] {
+        if { ( $octet1 > 223 ) } {
+            return "first number of an IP address must be 223 or less"
+        } else {
+            if { ($octet2 > 255) || ($octet3 > 255) || ($octet4 > 255) } {
+                return "numbers in an IP address must be between 0 and 255"
+            }
+        }
+        if { (( $octet1 <= 127 ) && \
+                ((($octet2 == 255) && ($octet3 == 255) && ($octet4 == 255)) \
+                 || (($octet2 == 0) && ($octet3 == 0) && ($octet4 == 0)))) \
+             || (( $octet1 <= 191 ) && \
+                  ((($octet3 == 255) && ($octet4 == 255)) \
+                   || (($octet3 == 0) && ($octet4 == 0)))) \
+             || (( $octet1 <= 223 ) && \
+                  (($octet4 == 255) || ($octet4 == 0))) } {
+            return "You cannot use all \"0\"s or all \"255\"s in the local portion of an IP addresses"
+        } else {
+            return ""
+        }
+
+    } else {
+        return "IP addresses must be present and must be of the form #.#.#.#, where each # is between 0 and 255"
+    }
+}
+
+################################################################################
+#
+# Check if two ip addresses are on different subnets
+# Assumes the current subnet mask of 255.255.255.0
+#
+proc ToorCheckIPDiffSubnets { ip1 ip2 } {
+
+    if [ regexp {^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$} $ip1 \
+                 whole octet11 octet12 octet13 octet14 ] {
+        if [ regexp {^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$} $ip2 \
+                     whole octet21 octet22 octet23 octet24 ] {
+
+            if { ( $octet11 == $octet21 ) && ( $octet12 == $octet22 ) \
+               && ( $octet13 == $octet23 ) } {
+                return "At least one of the first 3 numbers in these IP addresses must be different"
+            } else {
+                return ""  ;# different subnets, all is fine
+            }
+        } else {
+            return ""  ;# should have been flagged by ip test
+        }
+
+    } else {
+        return ""  ;# should have been flagged by ip test
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid UIC
+#
+proc ToorCheckUIC { uic } {
+
+    if [ regexp {^[A-Z0-9]+$} $uic ] {
+        if { [ string length $uic ] == 6 } {
+            return ""
+        } else {
+            return "UIC must be 6 characters long"
+        }
+    } else {
+        return "UIC must must be present and may contain only upper-case letters and numbers"
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid URN
+#
+proc ToorCheckURN { urn } {
+
+    if [ regexp {^[0-9]+$} $urn ] {
+        if { [ string length $urn ] <= 7 } {
+            return ""
+        } else {
+            return "Unit Reference Number must be 7 or fewer digits long"
+        }
+    } else {
+        return "Unit Reference Number must be present and may only contain numbers"
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid Originator/Recipient Name
+#
+proc ToorCheckORName { orname_val } {
+
+    upvar $orname_val orname
+ 
+    if [ regexp {^[\ -{}~]+$} $orname ] {
+	set trim_name [ string trimright $orname ]
+
+        if { [ string length $trim_name ] > 33 } {
+            return "Originator/Recipient Name must be 33 or fewer characters long"
+        } else {
+ 
+            ## Concatinate spaces to fill string to 33 chars
+            if { [ string length $trim_name ] < 33 } {
+                set trim_name "$trim_name                                 "
+                set trim_name [string range $trim_name 0 32]
+            }
+ 
+            ## Optional
+            set subunit_id [ string range $trim_name 0 3 ]
+            if { [ string index $subunit_id 0 ] == " " &&
+                $subunit_id != "    " } {
+                return "The first 4 characters of the O/R Name are the Subunit ID. It designates units below batallion. This field must either be all blanks or must start with a character other than a blank or a \"|\""
+            }
+ 
+            ## Mandatory
+            if { [ string index $trim_name 4 ] == " " } {
+            return "Characters 5 to 13 of the O/R Name form the Unit ID. It designates units above batallion (e.g. 3CORPS). This field is mandatory and must start with a character other than a blank or a \"|\""
+            }
+ 
+            ## Mandatory
+            if { [ string index $trim_name 13 ] == " "  ||
+                 [ string index $trim_name 14 ] == " " } {
+                return "Characters 14 and 15 of the O/R Name designate the Nation. This field is mandatory. Neither character may be a blank or a \"|\". Value is usually \"US\""
+            }
+ 
+            ## Optional
+            set node_name [ string range $trim_name 15 19 ]
+            if { [ string index $node_name 0 ] == " " &&
+                $node_name != "     " } {
+                return "Characters 16 to 20 of the O/R Name form the Node. It usually designates the command post (e.g. MAIN). This field must either be all blanks or must start with a character other than a blank or a \"|\""
+            }
+ 
+            ## Mandatory
+            if { [ string index $trim_name 20 ] == " " } {
+                return "Characters 21 to 25 of the O/R Name specify the User. It usually designates a user position or function (e.g. ENG). This field is mandatory and must start with a character other than a blank or a \"|\""
+            }
+ 
+            ## Mandatory
+            if { [ string index $trim_name 25 ] == " " } {
+                return "Characters 26 to 30 of the O/R Name specify the Element. It usually designates the staff section or component (e.g. OPS). This field is mandatory and must start with a character other than a blank or a \"|\""
+            }
+ 
+            ## Optional
+            set qualifier [ string range $trim_name 30 32 ]
+            if { [ string index $qualifier 0 ] == " " &&
+                $qualifier != "   " } {
+                return "Characters 31 to 33 of the O/R Name specify a Qualifier. It is used when two O/R names are otherwise identical (e.g. 1). This field must either be all blanks or must start with a character other than a blank or a \"|\""
+            }
+ 
+            ## Return 33 char string in parameter
+            set orname $trim_name
+            return ""
+        }
+    } else {
+        return "Originator/Recipient Name must be present and must not contain any non-printable or \"|\" characters"
+    }
+}
+
+################################################################################
+#
+# Check if Originator/Recipient Names for two different interfaces are unique
+#
+proc ToorCheckORUnique { orname1 orname2 } {
+
+    if { $orname1 == $orname2 } {
+        return "These Originator/Recipient Names must be different"
+    } else {
+        return ""
+    }
+}
+
+################################################################################
+#
+# Check if two hostnames are unique
+#
+proc ToorCheckNameUnique { host1 host2 } {
+
+    if { $host1 == $host2 } {
+        return "These host names must be different"
+    } else {
+        return ""
+    }
+}
+
+################################################################################
+#
+# Check if two IP addresses are unique
+#
+proc ToorCheckIPUnique { ip1 ip2 } {
+
+    if { $ip1 == $ip2 } {
+        return "These IP addresses must be different"
+    } else {
+        return ""
+    }
+}
+
+################################################################################
+#
+# Check if input value is a valid Enclave Code
+#
+proc ToorCheckEnclaveCode { enclave } {
+
+    if [ regexp {^[A-Z0-9][A-Z0-9]$} $enclave ] {
+        return ""
+    } else {
+        return "Enclave Code must contain 2 upper-case characters or numbers"
+    }
+}
+
+################################################################################
+#
+# Read value of a variable from a file
+#
+proc ToorSetVarFromFile { variable file } {
+    upvar $variable my_var
+    set my_var ""
+    catch { set my_var  [ exec /usr/bin/head \-1 $file ] } ret_code
+}
+
+################################################################################
+#
+# Find IP address of "host" from /etc/host file
+#
+proc ToorGetIpAddress { host their_ip } {
+    global TOOR_HOST_FILE TOOR_CURRENT_CONFIG_DIR
+    upvar $their_ip my_ip
+    set my_ip ""
+    catch { set my_ip [exec /usr/bin/awk "BEGIN {cnt = 0} \
+\$0 ~ /(\[ \\t\]$host\[ \\t\])|(\[ \\t\]$host\$)/ && cnt == 0 {print \$1; cnt = 1}" $TOOR_HOST_FILE] } ret_code
+}
+
+################################################################################
+#
+# Fetch address book org_ip.unl file entry for named host
+#
+proc ToorFetchUnlRecord { host } {
+    global TOOR_ORG_IP_UNL_FILE
+    set line ""
+    set skipseg "\[\^\|\]\*\\\|"
+    set entry "\^$skipseg$skipseg$skipseg$host\\\|"
+    catch { set line [ exec /usr/bin/egrep $entry $TOOR_ORG_IP_UNL_FILE ] } \
+           ret_code
+    return $line
+}
+
+################################################################################
+#
+# Fetch IP for given host from unl file
+#
+proc ToorLookupUnlIpAddr { host } {
+    global TOOR_UNL_IP_INDEX
+
+    set ip_addr ""
+    set line [ ToorFetchUnlRecord $host ]
+    if { $line != "" } {
+        set parts [ split $line "|" ]
+        set ip_addr [lindex $parts $TOOR_UNL_IP_INDEX]
+    } else {
+        ToorGetIpAddress $host ip_addr
+    }
+    return $ip_addr
+}
+
+################################################################################
+#
+# Fetch Organization/Role Name for given host and ip
+#
+proc ToorLookupOrName { host ip file } {
+    global TOOR_UNL_IP_INDEX TOOR_UNL_OR_NAME_INDEX
+
+    set or_name ""
+    set line [ ToorFetchUnlRecord $host ]
+    if { $line != "" } {
+        set parts [ split $line "|" ]
+        if { [lindex $parts $TOOR_UNL_IP_INDEX] == $ip } {
+            set or_name [lindex $parts $TOOR_UNL_OR_NAME_INDEX]
+        } else {
+            # Inconsistent hostname and ip, use previous value
+            ToorSetVarFromFile or_name $file
+        }
+    } else {
+        ToorSetVarFromFile or_name $file
+    }
+    return $or_name
+}
+
+################################################################################
+#
+# Fetch Unit Identification Code (UIC) for given host and ip
+#
+proc ToorLookupUic { host ip } {
+    global TOOR_LAST_CONFIG_DIR TOOR_UIC_FILE \
+           TOOR_UNL_IP_INDEX TOOR_UNL_UIC_INDEX
+
+    set uic ""
+    set line [ ToorFetchUnlRecord $host ]
+    if { $line != "" } {
+        set parts [ split $line "|" ]
+        if { [lindex $parts $TOOR_UNL_IP_INDEX] == $ip } {
+            set uic [lindex $parts $TOOR_UNL_UIC_INDEX]
+        } else {
+            # Inconsistent hostname and ip, use previous value
+            ToorSetVarFromFile uic $TOOR_LAST_CONFIG_DIR/$TOOR_UIC_FILE
+        }
+    } else {
+        ToorSetVarFromFile uic $TOOR_LAST_CONFIG_DIR/$TOOR_UIC_FILE
+    }
+    return $uic
+}
+
+################################################################################
+#
+# Fetch Unit Reference Number (URN) for given host and ip
+#
+proc ToorLookupUrn { host ip } {
+    global TOOR_LAST_CONFIG_DIR TOOR_OUR_URN_FILE \
+           TOOR_UNL_IP_INDEX TOOR_UNL_URN_INDEX
+
+    set urn ""
+    set line [ ToorFetchUnlRecord $host ]
+    if { $line != "" } {
+        set parts [ split $line "|" ]
+        if { [lindex $parts $TOOR_UNL_IP_INDEX] == $ip } {
+            set urn [lindex $parts $TOOR_UNL_URN_INDEX]
+        } else {
+            # Inconsistent hostname and ip, use previous value
+            ToorSetVarFromFile urn $TOOR_LAST_CONFIG_DIR/$TOOR_OUR_URN_FILE
+        }
+    } else {
+        ToorSetVarFromFile urn $TOOR_LAST_CONFIG_DIR/$TOOR_OUR_URN_FILE
+    }
+    return $urn
+}
+
+################################################################################
+#
+# Fetch Cell Name for given host and ip
+#
+proc ToorLookupCellName { host ip } {
+    global TOOR_LAST_CONFIG_DIR \
+           TOOR_UNL_IP_INDEX TOOR_UNL_CELL_INDEX TOOR_CELL_NAME_FILE \
+           toor_vars TOOR_ORGANIZ_UNL_FILE TOOR_ORG_ORG_INDEX
+
+    set cell_name ""
+    set line [ ToorFetchUnlRecord $host ]
+    if { $line != "" } {
+        set parts [ split $line "|" ]
+        if { [lindex $parts $TOOR_UNL_IP_INDEX] == $ip } {
+            set cell_name [lindex $parts $TOOR_UNL_CELL_INDEX]
+            set raw_cell ""
+            catch { set raw_cell [ lindex \
+                                     [ split \
+                                         [ exec /usr/bin/grep \
+                                        "^$cell_name|" $TOOR_ORGANIZ_UNL_FILE \
+                                         ] "|" \
+                                     ] $TOOR_ORG_ORG_INDEX \
+                                  ] } ret_code
+            if { $raw_cell != "" } {
+                catch { set raw_cell [ string trim \
+                       [ exec /usr/bin/echo $raw_cell | \
+                       /usr/bin/tr {[A-Z]} {[a-z]} | \
+                       /usr/bin/tr -cs {[a-z][0-9].} {[-*]} ] "-" ] } ret_code
+            }
+            if { $raw_cell != "" } {
+                set cell_name $raw_cell
+            }
+        } else {
+            # Inconsistent hostname and ip, if this is a new master
+            if {$toor_vars(new,dce_hostname) != $toor_vars(orig,dce_hostname)} {
+                # name it's cell based on its host_name
+                set cell_name "$host-cell"
+            } else {
+                # use previous value
+                ToorSetVarFromFile cell_name \
+                        $TOOR_LAST_CONFIG_DIR/$TOOR_CELL_NAME_FILE
+            }
+        }
+    } else {
+        if {$toor_vars(new,dce_hostname) != $toor_vars(orig,dce_hostname)} {
+            set cell_name "$host-cell"
+        } else {
+            # use previous value
+            ToorSetVarFromFile cell_name \
+                $TOOR_LAST_CONFIG_DIR/$TOOR_CELL_NAME_FILE
+        }
+    }
+    return $cell_name
+}
+
+################################################################################
+#
+# When a hostname changes, lookup the ip address and o/r name from unl
+# files (or /etc/hosts if no unl file)
+#
+proc ToorNameChanged { old_name new_name ip org uic urn file } {
+    upvar #0 $ip my_ip
+    upvar #0 $org my_org
+    upvar #0 $uic my_uic
+    upvar #0 $urn my_urn
+
+    ToorPleaseWait
+
+    set newip [ ToorLookupUnlIpAddr $new_name ]
+    if { $newip != "" } {
+        set my_ip $newip
+        set newor [ ToorLookupOrName $new_name $newip $file ]
+        if { $newor != "" } {
+            set my_org $newor
+        }
+        set newuic [ ToorLookupUic $new_name $newip ]
+        if { $newuic != "" } {
+            set my_uic $newuic
+        }        
+        set newurn [ ToorLookupUrn $new_name $newip ]
+        if { $newurn != "" } {
+            set my_urn $newurn
+        }        
+    }
+
+
+}
+
+################################################################################
+#
+# When a dce master hostname changes, lookup the ip address and cell name from 
+# unl files (or /etc/hosts if no unl file)
+#
+proc ToorDceNameChanged { old_name new_name ip cell } {
+    upvar #0 $ip my_ip
+    upvar #0 $cell my_cell
+    set newip [ ToorLookupUnlIpAddr $new_name ]
+    if { $newip != "" } {
+        set my_ip $newip
+        set newcell [ ToorLookupCellName $new_name $newip ]
+        if { $newcell != "" } {
+            set my_cell $newcell
+        }
+    }
+}
+
+################################################################################
+#
+# Return list of items from a specific column of unl file, if args are non-null
+# first entry of each pair is a column number that has contents that must
+# match the second value of the pair.  All args pairs are 'and'ed together
+#   list_name - list containing each line of unl file, each line is a sublist
+#   field_number - index (0=first) of column to retrieve
+#   args - series of pairs, specifies values that other columns must match
+# Items are returned in sorted order with duplicate entries suppressed 
+#
+proc ToorGetUnlList { list_name field_number args } {
+    upvar #0 $list_name l_name
+    set org_list ""
+    set org_unl -1
+    foreach org_parts $l_name {
+        set reject_line 0
+        if { [ llength $org_parts ] > $field_number } {
+            for {set i 0} {$i < [expr [llength $args]-1]} {incr i +2} {
+                set col [lindex $args $i]
+                set col_value [lindex $args [expr $i + 1]]
+                if { [ lindex $org_parts $col ] != $col_value } {
+                    set reject_line 1
+                    break
+                }
+            }
+            if { $reject_line == 0 } {
+                set org_name [ lindex $org_parts $field_number ]
+                if { [ lsearch $org_list $org_name ] == -1 } {
+                    lappend org_list $org_name
+                }
+             }
+        }
+    }
+    return [ lsort $org_list ]
+}
+
+################################################################################
+#
+# If "repopulate" is true, set list of items in the "listbx" listbox
+# In either case, activate the entry in listbx that corresponds to
+# the value of var.  Other variables are just passed to ToorGetUnlList
+#
+proc ToorSetListContents { listbx repopulate var list field args } {
+    upvar #0 $var list_var
+
+    if { $repopulate } {
+        $listbx delete 0 end
+        set item_list [ eval [ concat ToorGetUnlList $list $field $args ] ]
+        eval [ concat "$listbx" "insert" "end" $item_list ]
+        set toor_lists_cached 1
+    } else {
+        set item_list [ $listbx get 0 end ]
+    }
+
+    set indx [ lsearch $item_list $list_var ]
+    $listbx selection clear 0 end
+    if { $indx != -1 } {
+        $listbx see      $indx
+        $listbx activate $indx
+        $listbx selection set active
+    } else {
+        $listbx yview    0
+        $listbx activate 0
+    }
+}
+
+################################################################################
+#
+# Set global variable var to active entry from listbx, then call proc to update
+# other lists that depend on this value
+#
+proc ToorSetEntryFromList { var listbx proc } {
+    global toor_vars toor_org toor_type toor_role toor_name
+    upvar #0 $var list_var
+    ToorPleaseWait
+    set list_var [ $listbx get active ]
+    eval $proc
+}
+
+################################################################################
+#
+# Return cell name for organiz unl file corresponding to named organization
+# organiz_list is list of lines from organiz unl file with each line split
+# into sub-lists
+#
+proc ToorGetCellFromOrg { organiz_list org } {
+    global TOOR_ORG_ORG_INDEX TOOR_ORG_CELL_INDEX
+    upvar #0 $organiz_list o_list
+    set out_field ""
+    foreach entry_list $o_list {
+        if { [ lindex $entry_list $TOOR_ORG_ORG_INDEX ] == $org } {
+            set out_field [ lindex $entry_list $TOOR_ORG_CELL_INDEX ]
+            break
+        }
+    }
+    return $out_field
+}
+
+################################################################################
+#
+# Set list of roles in listbx that correspond to the selected cell and role_type
+# If an entry matches the value in var, select it
+#
+proc ToorSetRoleList { organiz_list org_ip_list listbx var org typ } {
+    global TOOR_UNL_CELL_INDEX TOOR_UNL_ROLE_INDEX TOOR_UNL_ROLE_TYPE_INDEX
+    upvar #0 $org list_org
+    upvar #0 $typ list_typ
+    ToorSetListContents $listbx 1 $var $org_ip_list $TOOR_UNL_ROLE_INDEX \
+                        $TOOR_UNL_CELL_INDEX \
+                             [ ToorGetCellFromOrg $organiz_list $list_org ] \
+                        $TOOR_UNL_ROLE_TYPE_INDEX $list_typ
+
+}
+
+################################################################################
+#
+# set list of role_tyes in listbx that correspond to the selected cell
+# if an entry matches the value in "var", select it
+# calls ToorSetRoleList to update list of possible roles
+#
+proc ToorSetRoleTypList { organiz_list org_ip_list listbx var role_bx \
+                          role_var org } {
+    global TOOR_UNL_CELL_INDEX TOOR_UNL_ROLE_TYPE_INDEX
+    upvar #0 $org list_org
+    ToorSetListContents $listbx 1 $var $org_ip_list $TOOR_UNL_ROLE_TYPE_INDEX \
+                        $TOOR_UNL_CELL_INDEX \
+                             [ ToorGetCellFromOrg $organiz_list $list_org ]
+    ToorSetRoleList $organiz_list $org_ip_list $role_bx $role_var $org $var
+
+}
+
+################################################################################
+#
+# set list of all possible orgainizations, if an entry matches the value in
+# "var", select it
+# calls ToorSetRoleTypList to update role_type and role lists
+# "repop" should be true for the first call and false thereafter since
+# the list of available organizations should not change during a run
+#
+proc ToorSetOrgList { organiz_list org_ip_list listbx repop var role_typ_bx \
+                      role_typ_var role_bx role_var } {
+    global TOOR_ORG_ORG_INDEX
+    ToorSetListContents $listbx $repop $var $organiz_list $TOOR_ORG_ORG_INDEX
+    ToorSetRoleTypList  $organiz_list $org_ip_list $role_typ_bx $role_typ_var \
+                        $role_bx $role_var $var
+                       
+}
+
+################################################################################
+#
+# save value on entry to field
+#
+proc ToorSaveEntryValue { window } {
+    global toor_entry_value
+    set toor_entry_value  [$window get]
+}
+
+################################################################################
+#
+# On exit from field, see if value has changed, and if so call procedure
+# provided
+#
+proc ToorCheckEntryChange { window changed_proc args } {
+    global toor_entry_value
+    set exit_value [$window get]
+    if { $exit_value != $toor_entry_value } {
+        lappend arg_list $toor_entry_value $exit_value
+        set arg_list [ concat $arg_list $args ]
+        eval $changed_proc $arg_list
+    }
+}
+
+################################################################################
+#
+# On exit from field, see if value has changed, and if so call procedure
+# provided, no indication of old & new values passed to called routine
+#
+proc ToorCallIfChanged { window changed_proc args } {
+    global toor_entry_value
+    set exit_value [$window get]
+    if { $exit_value != $toor_entry_value } {
+        ToorPleaseWait
+        eval $changed_proc $args
+    }
+}
+
+################################################################################
+#
+# Display characteristics of this workstation
+#
+proc ToorDisplayWorkstationConfig { frame state } {
+    global toor_interfaces
+    frame $frame
+    pack $frame -fill x -side top 
+    set intfc [ ToorLabelledSubframe $frame.title current_workstation \
+                  "THIS WORKSTATION" left 0 ]
+    set cmd "ToorLabelledRadiobuttons $intfc"
+    set i_cnt [ expr 4 - [ llength $toor_interfaces ] ]
+    set pad ""
+    for { set cnt 0 } { $cnt < $i_cnt } { incr cnt } {
+        append pad "       "
+    }
+    append cmd " \"" $pad "     Network Interface:" "\" " \
+               "toor_vars(new,net_intfc) disabled left 0 "
+    foreach ifce $toor_interfaces {
+        append cmd " " $ifce " " $ifce
+    }
+    eval $cmd
+    
+    set               subframe        $frame.low
+    frame             $subframe       -borderwidth 1
+    pack              $subframe       -fill x -side top -anchor w
+    ToorDisplayHost   $subframe.host  toor_vars(new,local_hostname) top disabled
+    ToorDisplayIp     $subframe.ip    toor_vars(new,local_ip)       top disabled
+    ToorDisplayOrNameS $subframe.or   toor_vars(new,or_name_s)      top disabled
+    ToorDisplayHostId $subframe.id    toor_vars(new,hostid)
+    pack              $subframe.host $subframe.ip $subframe.or -side left 
+    pack              $subframe.id -side left -anchor e
+
+}
+
+################################################################################
+#
+# Display characteristics of the workstation serving as the ASAS subsystem
+# master
+#
+proc ToorDisplaySubsystemConfig { frame state } {
+    frame $frame
+    pack $frame -fill x -side top 
+    set mas_client  [ToorLabelledSubframe $frame.title dce_info \
+                    "ASAS SUBSYSTEM" left 0 ]
+    set mas_cli_btn [ToorLabelledSubframe $mas_client this_one \
+                    "             This Workstation is:" left 0 ]
+    ToorLabelledRadiobuttons $mas_cli_btn "" \
+                          toor_vars(new,local_is_asas_master) $state left 0 \
+                          "Master"      asasmaster \
+                          "Client"      asasclient
+
+    set               lowframe    $frame.low
+    frame             $lowframe
+    pack              $lowframe   -fill x -side top -anchor w
+    set               leftframe   $lowframe.left
+    frame             $leftframe  -borderwidth 1
+    pack              $leftframe  -side left -anchor w
+    set               rightframe  $lowframe.right
+    frame             $rightframe -borderwidth 1
+    pack              $rightframe -fill x -side left -anchor e
+
+    ToorDisplayEnclave $leftframe.enclave top disabled
+    pack               $leftframe.enclave -side left
+    ToorDisplayDomain  $leftframe.domain toor_vars(new,nis_domain)  top disabled
+    pack               $leftframe.domain -side left
+
+    label             $rightframe.label -justify left \
+                      -text "\nMaster\nis at"
+    ToorDisplayHost   $rightframe.host toor_vars(new,asas_hostname) top disabled
+    ToorDisplayIp     $rightframe.ip   toor_vars(new,asas_ip)       top disabled
+    pack              $rightframe.label -fill x -side left -anchor w
+    pack              $rightframe.host $rightframe.ip -side left -anchor e
+    pack              $mas_client -side top
+}
+
+################################################################################
+#
+# Display characteristics of the DCE Cell and of the workstation serving as the
+# DCE CDS and Security master
+#
+proc ToorDisplayDceConfig { frame state } {
+    frame $frame
+    pack $frame -side top -fill x
+    set mas_client  [ToorLabelledSubframe $frame.title dce_info \
+                    "DCE CONFIGURATION" left 0 ]
+    set mas_cli_btn [ToorLabelledSubframe $mas_client this_one \
+                     "          This Workstation is:" left 0 ]
+    ToorLabelledRadiobuttons $mas_cli_btn "" \
+                          toor_vars(new,local_is_dce_master) $state left 0 \
+                          "Master"      dcemaster \
+                          "Client"      dceclient
+
+    set              lowframe $frame.low
+    frame            $lowframe
+    pack             $lowframe -side top -anchor w -fill x
+    set              leftframe $lowframe.left
+    frame            $leftframe -borderwidth 1
+    pack             $leftframe -side left -anchor w
+    set              rightframe $lowframe.right
+    frame            $rightframe -borderwidth 1
+    pack             $rightframe -side left -anchor e -fill x
+
+    ToorDisplayDceCell $leftframe.cell_name toor_vars(new,dce_cell) top disabled
+    pack             $leftframe.cell_name -side left
+
+    label            $rightframe.label -justify left \
+                     -text "DCE\nCell\nMaster\nis at"
+    ToorDisplayHost  $rightframe.host   toor_vars(new,dce_hostname) top disabled
+    ToorDisplayIp    $rightframe.ip     toor_vars(new,dce_ip)       top disabled
+    pack             $rightframe.label  -side left -anchor w
+    pack             $rightframe.host   $rightframe.ip -side left -anchor e
+    pack             $mas_client        -side top
+
+}
+
+################################################################################
+#
+# Display current (at boot time) configuration of workstation, ASAS Subsystem
+# and the DCE Cell, ask user if reconfiguration is needed
+#
+proc ToorDisplayConfig { frame } {
+    global toor_vars
+    frame                        $frame
+    label                        $frame.main_title \
+                                 -text "Previous Workstation Configuration\n"
+    pack                         $frame.main_title -side top
+    ToorDisplayWorkstationConfig $frame.f1 disabled
+    ToorDisplaySubsystemConfig   $frame.f2 disabled
+    ToorDisplayDceConfig         $frame.f3 disabled
+    ToorDisplayBeaconInUse       $frame.f4 disabled
+    label                        $frame.main_prompt -text \
+                                 "\nDo you want to change this configuration?"
+    pack $frame.main_prompt      -side top
+    ToorDisplayYesNo             $frame.f5 N
+    ToorDisplaySecondsLeft       $frame.f6
+
+    pack                         $frame
+}
+
+################################################################################
+#
+# Display desired configuration of workstation, ASAS Subsystem
+# and the DCE Cell, as updated by preceding dialogs
+#
+proc ToorDisplayNewConfig { frame } {
+    global toor_vars
+    frame                        $frame
+    pack                         $frame
+    label                        $frame.main_title \
+                                 -text "Updated Workstation Configuration\n"
+    pack                         $frame.main_title -side top
+    ToorDisplayWorkstationConfig $frame.f1 disabled
+    ToorDisplaySubsystemConfig   $frame.f2 disabled
+    ToorDisplayDceConfig         $frame.f3 disabled
+    ToorDisplayBeaconInUse       $frame.f4 disabled
+    label                        $frame.main_prompt -text \
+                                 "\nIs this new configuration correct?"
+    pack $frame.main_prompt      -side top
+    ToorButtonSet                $frame.btn N toor_go_back_to_first_menu dummy \
+                                 "Yes"  N \
+                                 "No"   Y
+    pack $frame.btn -side top
+
+    tkwait variable toor_go_back_to_first_menu
+
+    destroy $frame
+}
+
+################################################################################
+#
+# Wait for user to select whether he/she wants to change the configuration
+# starts timeout timer, if timer expires, assume no change desired
+#
+proc ToorWantToChangeConfig { } {
+    global toor_want_to_change_ans toor_seconds_to_go
+    set toor_seconds_to_go      30
+    set toor_want_to_change_ans N
+
+    after 1000 ToorReduceTimeoutClock
+    tkwait variable toor_want_to_change_ans
+    return $toor_want_to_change_ans
+}
+
+################################################################################
+#
+# Decrease timeout counter by one, when value goes negative, we're done
+#
+proc ToorReduceTimeoutClock { } {
+    global toor_seconds_to_go toor_want_to_change_ans
+    if { $toor_seconds_to_go <= 0 } { 
+        set toor_want_to_change_ans N
+    } else {
+        incr toor_seconds_to_go -1
+        after 1000 ToorReduceTimeoutClock
+    }
+}
+
+################################################################################
+#
+# User requested no re-config, check if hostid changed -- if it has user
+# must either reconfig or shutdown
+#
+proc ToorCheckHostId { frame } {
+    global toor_vars toor_done_with_this_frame toor_reconfig_needed \
+           toor_domain_suffix \
+           TOOR_DATA_DIR TOOR_CELL_ADMIN_PW TOOR_NEW_CONFIG_DIR
+
+    catch { set toor_vars(new,hostid) [ exec /usr/ucb/hostid ] } ret_code
+    if { $toor_vars(new,hostid) != $toor_vars(orig,hostid) } {
+        frame  $frame
+        pack   $frame
+        label  $frame.main_title \
+               -text "! WARNING:  This system has moved to a new workstation\n"
+        pack   $frame.main_title -side top
+
+        label  $frame.head \
+               -text "The new workstation has"
+        pack   $frame.head -side top
+        ToorDisplayHostId $frame.id toor_vars(new,hostid)
+        pack   $frame.id -side top
+
+        label  $frame.prompt_1 \
+               -text "\nDo you want to reconfigure the software products to run"
+        pack   $frame.prompt_1 -side top
+        label  $frame.prompt_2 \
+               -text "on this workstation"
+        pack   $frame.prompt_2 -side top
+
+        ToorButtonSet $frame.btn Y toor_done_with_this_frame dummy \
+               "Yes"  Y \
+               "Shutdown" N
+        pack $frame.btn -side top
+
+        tkwait variable toor_done_with_this_frame
+
+        if {$toor_done_with_this_frame == "N"} {
+            set init_pid 1
+            catch { set init_pid [ exec /usr/bin/ps \-ef | \
+                                        /usr/bin/grep /etc/init |
+                                        /usr/bin/grep \-v grep | \
+                                        /usr/bin/awk "{print \$2}" ] } ret_code
+            catch { exec kill -9 $init_pid } ret_code
+            catch { exec /usr/sbin/halt -l } ret_code
+            exit -1
+        }
+
+        catch { exec /usr/bin/cp -p $TOOR_DATA_DIR/$TOOR_CELL_ADMIN_PW \
+                     $TOOR_NEW_CONFIG_DIR/$TOOR_CELL_ADMIN_PW } ret_code
+
+        if { $toor_vars(new,nis_domain) == "" } {
+           set toor_vars(new,nis_domain) \
+                   "$toor_vars(new,local_hostname).$toor_domain_suffix"
+        }
+        if { $toor_vars(new,asas_hostname) == "" } {
+           set toor_vars(new,asas_hostname) $toor_vars(new,local_hostname)
+        }
+        if { $toor_vars(new,asas_ip) == "" } {
+           set toor_vars(new,asas_ip) $toor_vars(new,local_ip)
+        }
+        if { $toor_vars(new,dce_hostname) == "" } {
+           set toor_vars(new,dce_hostname) $toor_vars(new,local_hostname)
+        }
+        if { $toor_vars(new,dce_ip) == "" } {
+           set toor_vars(new,dce_ip) $toor_vars(new,local_ip)
+        }
+        if { $toor_vars(new,dce_cell) == "" } {
+            set toor_vars(new,dce_cell) [ ToorLookupCellName \
+                                          $toor_vars(new,dce_hostname) \
+                                          $toor_vars(new,dce_ip) ]
+        }
+        if { $toor_vars(new,enclave) == "" } {
+           set toor_vars(new,enclave) "AA"
+        }
+
+        if { $toor_vars(new,left_video_cmd) == "" } {
+            ToorSetDisplayParams $frame.id.entry toor_vars(new,left_video) \
+                                 other toor_vars(new,left_video_cmd)
+        }
+        if { $toor_vars(new,right_video_cmd) == "" } {
+            ToorSetDisplayParams $frame.id.entry toor_vars(new,right_video) \
+                                 other toor_vars(new,right_video_cmd)
+        }
+
+        set toor_reconfig_needed "Y"
+
+        destroy $frame
+    }
+}
+
+################################################################################
+#
+# Select entry in list of potential clients given by $active_index,
+# variables for selection box are also modified
+#
+proc ToorSelectActiveClient { listbx active_index box_list prompt } {
+
+    global toor_vars toor_org toor_type toor_role toor_name toor_ip \
+           toor_selected_client toor_update_pending toor_list_changed
+
+    if { $active_index >= [ $listbx size ] } {
+        incr active_index -1
+    }
+    if { $active_index >= 0 } {
+        $listbx selection set $active_index
+        $listbx activate $active_index
+        set toor_org  [ lindex $toor_vars(new,client_org_list)  $active_index ]
+        set toor_type [ lindex $toor_vars(new,client_type_list) $active_index ]
+        set toor_role [ lindex $toor_vars(new,client_role_list) $active_index ]
+        set toor_name [ lindex $toor_vars(new,client_name_list) $active_index ]
+        set toor_ip   [ lindex $toor_vars(new,client_ip_list)  $active_index ]
+        set toor_selected_client $active_index
+        $prompt configure \
+                -text "Information About Selected Client Workstation:\n"
+        set toor_update_pending 0
+        set toor_list_changed   0
+    } else {
+        $listbx activate 0
+        set toor_org  ""
+        set toor_type ""
+        set toor_role ""
+        set toor_name ""
+        set toor_ip   ""
+        set toor_selected_client -1
+        $prompt configure \
+                -text "Enter Information About New Client Workstation:\n"
+    }
+    ToorSetOrgList toor_organiz_list toor_org_ip_list \
+                   [ lindex $box_list 0] 0 toor_org \
+                   [ lindex $box_list 1]   toor_type \
+                   [ lindex $box_list 2]   toor_role
+}
+
+################################################################################
+#
+# Delete the currently selected client - selection moves to element
+# that moves into the vacated position in the list
+#
+proc ToorDeleteSelectedClient { listbx sel_boxes prompt } {
+    global toor_vars toor_selected_client toor_update_pending toor_list_changed
+
+    if { [ $listbx size ] > 0 } {
+        if { $toor_selected_client >= 0 } {
+            ToorPleaseWait
+            set active_index [ lindex $toor_selected_client 0 ]
+            $listbx delete $toor_selected_client
+            set toor_vars(new,client_org_list) \
+                [ lreplace $toor_vars(new,client_org_list) \
+                $toor_selected_client $toor_selected_client ]
+            set toor_vars(new,client_type_list) \
+                [ lreplace $toor_vars(new,client_type_list) \
+                $toor_selected_client $toor_selected_client ]
+            set toor_vars(new,client_role_list) \
+                [ lreplace $toor_vars(new,client_role_list) \
+                $toor_selected_client $toor_selected_client ]
+            set toor_vars(new,client_name_list) \
+                [ lreplace $toor_vars(new,client_name_list) \
+                $toor_selected_client $toor_selected_client ]
+            set toor_vars(new,client_ip_list) \
+                [ lreplace $toor_vars(new,client_ip_list) \
+                $toor_selected_client $toor_selected_client ]
+            ToorSelectActiveClient $listbx $toor_selected_client $sel_boxes \
+                                   $prompt
+            set toor_update_pending 0
+            set toor_list_changed   0
+        }
+    }
+
+}
+
+################################################################################
+#
+# Apply key processing - If no selected entry, becomes new entry
+# otherwise is update to selected entry
+#
+proc ToorApplyClientUpdate { listbx sel_boxes prompt next_window } {
+    global toor_vars toor_go_back_to_first_menu \
+           toor_org toor_type toor_role toor_name toor_ip \
+           toor_selected_client toor_update_pending toor_list_changed
+
+    # first check that entry is OK
+
+    ToorDestroyEntryErrorsList
+
+    set err_list {}
+    ToorAddToErrorList err_list "Host Name" \
+                       [ ToorCheckHostname $toor_name ]
+    ToorAddToErrorList err_list "Client & Local Host Names" \
+                       [ ToorCheckNameUnique $toor_name \
+                                             $toor_vars(new,local_hostname) ]
+    if { $toor_vars(new,fddi_used) == "Y" } {
+        ToorAddToErrorList err_list "Client & FDDI/CDDI Host Names" \
+                           [ ToorCheckNameUnique $toor_name \
+                                                 $toor_vars(new,fddi_hostname) ]
+    }
+    set this_index 0
+    foreach name $toor_vars(new,client_name_list) {
+        if { $toor_selected_client != $this_index } {
+            ToorAddToErrorList err_list "New & Existing Client Host Names" \
+                               [ ToorCheckNameUnique $toor_name $name ]
+        }
+        incr this_index
+    }
+
+    ToorAddToErrorList err_list "IP Address" \
+                       [ ToorCheckIPAddr $toor_ip ]
+    ToorAddToErrorList err_list "Client & Local IP Addresses" \
+                       [ ToorCheckIPUnique $toor_ip \
+                                           $toor_vars(new,local_ip) ]
+    if { $toor_vars(new,fddi_used) == "Y" } {
+        ToorAddToErrorList err_list "Client & FDDI/CDDI IP Addresses" \
+                           [ ToorCheckIPUnique $toor_ip \
+                                               $toor_vars(new,fddi_ip) ]
+    }
+    set this_index 0
+    foreach ip $toor_vars(new,client_ip_list) {
+        if { $toor_selected_client != $this_index } {
+            ToorAddToErrorList err_list "New & Existing Client IP Addresses" \
+                               [ ToorCheckIPUnique $toor_ip $ip ]
+        }
+        incr this_index
+    }
+    ToorAddToErrorList err_list "Organization" \
+                       [ ToorCheckOptOganization $toor_org ]
+    ToorAddToErrorList err_list "Role Type" \
+                       [ ToorCheckOptRoleType $toor_type ]
+    ToorAddToErrorList err_list "Role" \
+                       [ ToorCheckOptRole $toor_role ]
+    set ready_to_apply [ eval ToorDisplayErrors \
+                         {"Client Workstations in this ASAS Subsystem"} \
+                         $err_list ]
+
+    if { $ready_to_apply } {
+        ToorPleaseWait
+        if { [ string length $toor_name ] < 20 } {
+            set cname [ string range $toor_name 0 19 ]
+        } else {
+            set cname $toor_name
+        }
+        set line [ format {%-20s %-15s} $cname $toor_ip ]
+
+        if { $toor_selected_client >= 0 } {
+
+            # there is a selected entry, replace it
+            $listbx delete $toor_selected_client
+            $listbx insert $toor_selected_client "$line"
+            set toor_vars(new,client_org_list) \
+                [ lreplace $toor_vars(new,client_org_list) \
+                           $toor_selected_client \
+                           $toor_selected_client $toor_org ]
+            set toor_vars(new,client_type_list) \
+                [ lreplace $toor_vars(new,client_type_list) \
+                           $toor_selected_client \
+                           $toor_selected_client $toor_type ]
+            set toor_vars(new,client_role_list) \
+                [ lreplace $toor_vars(new,client_role_list) \
+                           $toor_selected_client \
+                           $toor_selected_client $toor_role ]
+            set toor_vars(new,client_name_list) \
+                [ lreplace $toor_vars(new,client_name_list) \
+                           $toor_selected_client \
+                           $toor_selected_client $toor_name ]
+            set toor_vars(new,client_ip_list) \
+                [ lreplace $toor_vars(new,client_ip_list) \
+                           $toor_selected_client \
+                           $toor_selected_client $toor_ip ]
+        } else {
+
+            # no entry selected, this is a new client
+            set active_index [ $listbx index active ]
+            set toor_selected_client $active_index
+            $listbx insert $active_index "$line"
+            set toor_vars(new,client_org_list) \
+                [ linsert $toor_vars(new,client_org_list) \
+                          $active_index $toor_org ]
+            set toor_vars(new,client_type_list) \
+                [ linsert $toor_vars(new,client_type_list) \
+                          $active_index $toor_type ]
+            set toor_vars(new,client_role_list) \
+                [ linsert $toor_vars(new,client_role_list) \
+                          $active_index $toor_role ]
+            set toor_vars(new,client_name_list) \
+                [ linsert $toor_vars(new,client_name_list) \
+                          $active_index $toor_name ]
+            set toor_vars(new,client_ip_list) \
+                [ linsert $toor_vars(new,client_ip_list) \
+                          $active_index $toor_ip ]
+        }
+
+        ToorSelectActiveClient $listbx $toor_selected_client $sel_boxes \
+                               $prompt
+        set toor_update_pending 0
+        set toor_list_changed   0
+
+        focus $next_window
+
+    }
+
+    return $ready_to_apply
+
+}
+
+################################################################################
+#
+# Allow entry of a new client workstation entry
+#
+proc ToorDesignateNewClient { listbx enter box_list prompt } {
+    global toor_org toor_type toor_role toor_name toor_ip toor_selected_client \
+           toor_organiz_list toor_org_ip_list toor_update_pending
+
+    ToorPleaseWait
+    $listbx selection clear 0 end
+    focus $enter
+    set toor_org  ""
+    set toor_type ""
+    set toor_role ""
+    set toor_name ""
+    set toor_ip   ""
+    set toor_selected_client -1
+    set toor_update_pending 1
+    $prompt configure -text "Enter Information About New Client Workstation:\n"
+    ToorSetOrgList toor_organiz_list toor_org_ip_list \
+                   [ lindex $box_list 0] 0 toor_org \
+                   [ lindex $box_list 1]   toor_type \
+                   [ lindex $box_list 2]   toor_role
+
+}
+
+################################################################################
+#
+# Warn about pending changes and see if save needed
+#
+proc ToorWarnAboutChanges { } {
+    global toor_warn_reply
+
+    toplevel .warn -borderwidth 1
+    label .warn.msg1 -text "? You have made changes "
+    pack  .warn.msg1 -side top -anchor w
+    label .warn.msg2 -text "  Do you want to save the changes?\n"
+    pack  .warn.msg2 -side top -anchor w
+    ToorButtonSet .warn.btn Y toor_warn_reply dummy \
+               "Yes"    Y \
+               "No"     N \
+               "Cancel" C
+    pack  .warn.btn -side top
+    grab  .warn
+
+    tkwait variable toor_warn_reply
+    
+    destroy .warn
+}
+
+################################################################################
+#
+# Sets toor_update_pending to signal that a change has been made to one of
+# the data entry fields, and has not yet been applied.  args are ignored
+#
+proc ToorSetChangePending { args } {
+    global toor_update_pending
+
+    set toor_update_pending 1
+}
+
+################################################################################
+#
+# Record when a field's contents changes
+#
+proc ToorRecordUpdates { flds } {
+     upvar $flds fields
+    
+    foreach entry_field $fields {
+        bind $entry_field <FocusIn>  "+ToorSaveEntryValue $entry_field"
+        bind $entry_field <FocusOut> "+ToorCheckEntryChange $entry_field \
+                                          ToorSetChangePending "
+    }
+}
+
+################################################################################
+#
+# Remove any entry from the list of potential cllients that has the
+# same hostname or IP address as either the Ethernet or FDDI interface
+#
+proc ToorRemoveDuplicateHosts { } {
+    global toor_vars
+
+    set index [ llength $toor_vars(new,client_name_list) ]
+    for { incr index -1 } { $index >= 0 } { incr index -1 } {
+        set name [ lindex $toor_vars(new,client_name_list) $index ]
+        set ip [ lindex $toor_vars(new,client_ip_list) $index ]
+        if { $name == $toor_vars(new,local_hostname) \
+             || $ip == $toor_vars(new,local_ip) \
+             || ( $toor_vars(new,fddi_used) == "Y" \
+                  && ( $name == $toor_vars(new,fddi_hostname)
+                      || $ip == $toor_vars(new,fddi_ip))) } {
+            set toor_vars(new,client_org_list) \
+                [ lreplace $toor_vars(new,client_org_list) $index $index ]
+            set toor_vars(new,client_type_list) \
+                [ lreplace $toor_vars(new,client_type_list) $index $index ]
+            set toor_vars(new,client_role_list) \
+                [ lreplace $toor_vars(new,client_role_list) $index $index ]
+            set toor_vars(new,client_name_list) \
+                [ lreplace $toor_vars(new,client_name_list) $index $index ]
+            set toor_vars(new,client_ip_list) \
+                [ lreplace $toor_vars(new,client_ip_list) $index $index ]
+        }
+    }
+}
+
+################################################################################
+#
+# If workstation is a subsystem master, get list of client machines
+#
+proc ToorGetClients { frame } {
+    global toor_vars toor_go_back_to_first_menu TOOR_OR_NAME_FILE \
+           toor_org toor_type toor_role toor_name toor_ip \
+           toor_update_pending toor_warn_reply toor_list_changed
+
+    set toor_org  ""
+    set toor_type ""
+    set toor_role ""
+    set toor_name ""
+    set toor_ip   ""
+
+    set toor_entry_list  {}
+    set toor_select_list {}
+    set defined_list     {}
+
+    set toor_update_pending 0
+    set toor_list_changed   0
+    set toor_warn_reply     Y
+
+    ToorRemoveDuplicateHosts
+
+    frame  $frame
+    pack   $frame
+    label  $frame.main_title \
+           -text "Client Workstations in this ASAS Subsystem\n"
+    pack   $frame.main_title -side top
+
+    set scrolled      [ frame $frame.scrolled ]
+    pack      $scrolled -side top
+    label     $scrolled.title -text " Host Name            IP Address"
+    pack      $scrolled.title -side top -anchor w
+    set sb    [ frame $scrolled.sb ]
+    pack      $sb -side top
+    scrollbar $sb.scroll -command "$sb.list yview" -takefocus 0
+    listbox   $sb.list -yscroll "$sb.scroll set" -height 3 \
+                       -width 40 -selectmode single
+    pack      $sb.scroll -side right -fill y
+    pack      $sb.list   -side left  -fill both
+
+    set index 0
+    foreach name $toor_vars(new,client_name_list) {
+        if { [ string length $name ] < 20 } {
+            set cname [ string range $name 0 19 ]
+        } else {
+            set cname $name
+        }
+        set line [ format {%-20s %-15s} $cname \
+                          [ lindex $toor_vars(new,client_ip_list) $index ] ]
+        incr index
+        lappend defined_list $line
+    }
+    eval [ concat "$sb.list" "insert" "end" $defined_list ]
+    $sb.list yview 0
+    $sb.list selection clear 0 end
+
+    if { [ llength $toor_vars(new,client_name_list) ] > 0 } {
+        set active_index 0
+    } else {
+        set active_index -1
+    }
+
+    set client  [ frame $frame.client -borderwidth 1 ]
+    pack        $client -side top
+    label       $client.info \
+                -text "Information About Selected Client Workstation:\n"
+    pack        $client.info -side top
+
+    # set up command to update other info when selection changes
+    set cmd [ ToorCmdToUpdateHostFromList toor_org toor_type toor_role \
+                                          toor_name toor_ip \
+                                          toor_dummy toor_dummy2 toor_dummy3 \
+                                          $TOOR_OR_NAME_FILE ]
+
+    ToorLabelledRadiobuttons $client.select "Data Entry Method:" \
+                             toor_vars(new,list_selection) normal left 0 \
+                             "Select From Lists"    1 \
+                             "Type Information"     0
+
+    label              $client.space -text " "
+    pack               $client.space -side top
+    set clienth        [ frame $client.top ]
+    set csl            [ frame $client.csl ]
+    set csa            [ frame $client.csa ]
+    pack               $clienth $csl $csa -side top -fill x -anchor w
+    ToorDisplayHost    $clienth.host toor_name  left normal
+    pack               $clienth.host -side left
+    ToorDisplayIp      $clienth.ip   toor_ip left normal
+    pack               $clienth.ip   -side left -anchor e
+
+    ToorUnitSelectionLists $csl.lists toor_entry_list toor_select_list \
+                           toor_organiz_list toor_org_ip_list \
+                           toor_org toor_type toor_role \
+                           $cmd
+
+    ToorButtonSet      $csa.btn "" toor_apply dummy \
+                       "Apply"   A
+    pack               $csa.btn -side top
+
+    ToorSelectActiveClient $sb.list $active_index $toor_select_list $client.info
+
+    ToorSetListBindings $sb.list 1 \
+                      [ format {ToorPleaseWait ; ToorSelectActiveClient %s \
+                                [ %s index active ] %s %s } \
+                        $sb.list $sb.list [ list $toor_select_list ] \
+                        $client.info ]
+
+    lappend toor_entry_list $clienth.host.entry $clienth.ip.entry
+
+    ToorPropagateNameChange $clienth.host.entry toor_ip \
+                            toor_dummy toor_dummy2 toor_dummy3 \
+                            toor_org toor_type toor_role \
+                            $TOOR_OR_NAME_FILE \
+                            $toor_select_list
+
+    ToorRecordUpdates toor_entry_list
+
+    ToorActivateEntryMethod $toor_select_list $toor_entry_list \
+                            $client.select.buttons
+
+    ToorButtonSet $frame.btn N toor_go_back_to_first_menu dummy \
+                  "Done"   N \
+                  "New"    A \
+                  "Delete" D \
+                  "Cancel" Y
+
+    $csa.btn.b1   configure -command " ToorApplyClientUpdate $sb.list \
+                                        [ list $toor_select_list ] \
+                                        $client.info $frame.btn.b7 "
+    $frame.btn.b3 configure -command " ToorDeleteSelectedClient $sb.list \
+                                       [ list $toor_select_list ] $client.info "
+    $frame.btn.b5 configure -command " ToorDesignateNewClient $sb.list \
+                                       $client.select.buttons.1 \
+                                       [ list $toor_select_list ] $client.info "
+    pack $frame.btn -side top
+
+    update
+    ToorPleaseWait
+    ToorSetOrgList toor_organiz_list toor_org_ip_list \
+                   [ lindex $toor_select_list 0 ] 1 toor_org \
+                   [ lindex $toor_select_list 1 ] toor_type \
+                   [ lindex $toor_select_list 2 ] toor_role
+
+    set ready_to_exit F
+    while { $ready_to_exit == "F" } {
+
+        tkwait variable toor_go_back_to_first_menu
+
+        ToorDestroyEntryErrorsList
+
+        if { $toor_go_back_to_first_menu == "Y" } {
+            set ready_to_exit T
+        } else {
+            if { $toor_update_pending || $toor_list_changed } {
+                ToorWarnAboutChanges
+                if { $toor_warn_reply == "N" } {
+                    set ready_to_exit T
+                } elseif { $toor_warn_reply == "Y" } {
+                    if { [ToorApplyClientUpdate $sb.list \
+                                                $toor_select_list \
+                                                $client.info $frame.btn.b7 ]} {
+                        set ready_to_exit T
+                    }
+                }
+            } else {
+                set ready_to_exit T
+            }
+        }
+    }
+
+    ToorPleaseWait
+
+    destroy  $frame
+
+}
+
+################################################################################
+#
+# Enable a window if a variable has a specific value
+#
+proc ToorEnableWindowOnValue { window variable value } {
+    upvar $variable   his_var
+    if {$his_var == $value} {
+        $window configure -state normal
+    } else {
+        $window configure -state disabled
+    }
+}
+
+################################################################################
+#
+# If workstation is a subsystem client, remind user that master must know about
+# this client
+#
+proc ToorWarnClient { frame } {
+    global toor_go_back_to_first_menu toor_vars
+
+    frame  $frame
+    pack   $frame
+    label  $frame.line1 -text "! This workstation's hostname and IP address"
+    pack   $frame.line1 -side top
+    label  $frame.line2  -text "must have been identified to workstation"
+    pack   $frame.line2 -side top
+    label  $frame.line3  -text "\"$toor_vars(new,asas_hostname)\" or this "
+    pack   $frame.line3 -side top
+    label  $frame.line4  -text "reconfiguration may fail\n"
+    pack   $frame.line4 -side top
+
+    ToorButtonSet $frame.btn N toor_go_back_to_first_menu dummy \
+                  "OK"  N \
+                  "Cancel" Y
+    pack $frame.btn -side top
+
+    tkwait variable toor_go_back_to_first_menu
+
+    ToorPleaseWait
+
+    destroy  $frame
+}
+
+################################################################################
+#
+# Get information on subsystem master if this machine is a client and
+# information on the domain and enclave if this workstation is a 
+# subsystem master
+#
+proc ToorGetAsasSubConfig { frame next } {
+    global toor_vars toor_domain_suffix toor_entry_list toor_select_list \
+           TOOR_OR_NAME_FILE
+    if { [winfo exists $frame.local] } {
+        destroy $frame.local
+    }
+    if { [winfo exists $frame.master] } {
+        destroy $frame.master
+    }
+
+    if { $toor_vars(new,local_is_asas_master) == "asasmaster" } {
+
+        set                subfr  [ frame $frame.local ]
+        pack               $subfr -fill x -side top -anchor w
+        ToorDisplayEnclave $subfr.enclave left normal
+        if { $toor_vars(orig,local_is_asas_master) != "asasmaster" || \
+             $toor_vars(new,local_hostname) != $toor_vars(orig,local_hostname) \
+             || $toor_vars(new,local_ip) != $toor_vars(orig,local_ip) \
+           } {
+            set toor_vars(new,asas_hostname) $toor_vars(new,local_hostname)
+            set toor_vars(new,asas_ip)       $toor_vars(new,local_ip)
+            set toor_vars(new,mst_organiz)   $toor_vars(new,our_organiz)
+            set toor_vars(new,mst_role_typ)  $toor_vars(new,our_role_typ)
+            set toor_vars(new,mst_role)      $toor_vars(new,our_role)
+
+            set toor_vars(new,nis_domain) \
+                            "$toor_vars(new,local_hostname).$toor_domain_suffix"
+        }
+        ToorDisplayDomain  $subfr.domain toor_vars(new,nis_domain)  top normal
+        pack               $subfr.domain -side left
+
+        set toor_vars(new,local_is_dce_master) \
+                                         $toor_vars(orig,local_is_dce_master)
+
+        # destroy tab bindings in case were previously configured as a client
+        bind $next <Tab> {}
+        bind $next <F1>  {}
+   
+    } else {
+        set toor_entry_list              {}
+        set toor_select_list             {}
+        set toor_vars(new,asas_hostname) $toor_vars(orig,asas_hostname)
+        set toor_vars(new,asas_ip)       $toor_vars(orig,asas_ip)
+        set toor_vars(new,mst_organiz)   $toor_vars(orig,mst_organiz)
+        set toor_vars(new,mst_role_typ)  $toor_vars(orig,mst_role_typ)
+        set toor_vars(new,mst_role)      $toor_vars(orig,mst_role)
+
+        set toor_vars(new,enclave)       $toor_vars(orig,enclave)
+        set toor_vars(new,nis_domain)    $toor_vars(orig,nis_domain)
+        set sframe [ToorLabelledSubframe $frame.master current_workstation \
+                           "Where is the ASAS Subsystem Master?\n" top 0 ]
+        pack               $frame.master
+        pack               $sframe -side top
+        set subframe       [ frame $sframe.top ]
+        set low            [ frame $sframe.low ]
+        pack               $subframe $low -side top
+        # set up command to update other info when selection changes
+        set cmd [ ToorCmdToUpdateHostFromList toor_vars(new,mst_organiz) \
+                                              toor_vars(new,mst_role_typ) \
+                                              toor_vars(new,mst_role) \
+                                              toor_vars(new,asas_hostname) \
+                                              toor_vars(new,asas_ip) \
+                                              toor_dummy \
+                                              toor_dummy2 \
+                                              toor_dummy3 \
+                                              $TOOR_OR_NAME_FILE ]
+
+        ToorLabelledRadiobuttons $subframe.select "Data Entry Method:" \
+                                 toor_vars(new,list_selection) normal left 0 \
+                                 "Select From Lists"    1 \
+                                 "Type Information"     0
+
+        ToorDisplayHost    $subframe.host  toor_vars(new,asas_hostname) left \
+                           normal
+        pack               $subframe.host -side left
+        ToorDisplayIp      $subframe.ip    toor_vars(new,asas_ip) left normal
+        pack               $subframe.ip   -side left -anchor e
+
+        ToorUnitSelectionLists $low.lists toor_entry_list \
+                               toor_select_list \
+                               toor_organiz_list toor_org_ip_list \
+                               toor_vars(new,mst_organiz) \
+                               toor_vars(new,mst_role_typ) \
+                               toor_vars(new,mst_role) \
+                               $cmd
+
+        lappend toor_entry_list $subframe.host.entry $subframe.ip.entry
+
+        ToorPropagateNameChange $subframe.host.entry toor_vars(new,asas_ip) \
+                                toor_dummy toor_dummy2 toor_dummy3 \
+                                toor_vars(new,mst_organiz) \
+                                toor_vars(new,mst_role_typ) \
+                                toor_vars(new,mst_role) $TOOR_OR_NAME_FILE \
+                                $toor_select_list
+
+        update
+        ToorPleaseWait
+        ToorSetOrgList toor_organiz_list toor_org_ip_list \
+                   [ lindex $toor_select_list 0 ] 1 toor_vars(new,mst_organiz) \
+                   [ lindex $toor_select_list 1 ] toor_vars(new,mst_role_typ) \
+                   [ lindex $toor_select_list 2 ] toor_vars(new,mst_role)
+
+        ToorActivateEntryMethod $toor_select_list $toor_entry_list \
+                                $subframe.select.buttons
+
+
+        if { $toor_vars(orig,local_is_asas_master) == "asasmaster" } {
+            set toor_vars(new,local_is_dce_master) dceclient
+        }
+    }
+
+}
+
+################################################################################
+#
+# Display current "beacon use" and ASAS subsystem master/client status and
+# prompt user for updated values
+#
+proc ToorGetTopConfig { frame } {
+    global toor_go_back_to_first_menu toor_vars
+    frame  $frame
+    pack   $frame -fill both
+    label  $frame.main_title \
+                          -text "Workstation Configuration\n"
+    pack   $frame.main_title -side top
+    label  $frame.beacont -text "Should the Address Book and Beacon be used?"
+    pack   $frame.beacont -side top -anchor w
+
+    ToorLabelledRadiobuttons $frame.beacon "" \
+           toor_vars(new,beacon_is_being_used) normal left 0 \
+                          "Yes"    beacon \
+                          "No"     nobeacon
+
+    label  $frame.sdrt -text "\nIs the Local Area Network connected to a slow-speed router?\n(e.g. SDR, Tactical Radio or Modem in use)"
+    pack   $frame.sdrt -side top -anchor w
+    ToorLabelledRadiobuttons $frame.sdr "" \
+           toor_vars(new,sdr) normal left 0 \
+                          "Yes"    sdr \
+                          "No"     nosdr
+
+    label  $frame.asast -text \
+           "\nWithin the ASAS subsystem, this workstation should be the"
+    pack   $frame.asast -side top -anchor w
+    ToorLabelledRadiobuttons $frame.asas "" \
+                          toor_vars(new,local_is_asas_master) normal \
+                          left 0 \
+                          "Master"      asasmaster \
+                          "Client"      asasclient
+
+    frame $frame.varframe -borderwidth 1
+    pack  $frame.varframe -fill x -side top
+
+    ToorButtonSet $frame.btn N toor_go_back_to_first_menu dummy \
+                  "Done"  N \
+                  "Cancel" Y
+    pack $frame.btn -side top
+
+    ToorGetAsasSubConfig $frame.varframe $frame.btn.b3
+
+    $frame.asas.buttons.asasmaster configure \
+               -command "ToorGetAsasSubConfig $frame.varframe $frame.btn.b3"
+    $frame.asas.buttons.asasclient configure \
+               -command "ToorPleaseWait ; \
+                         ToorGetAsasSubConfig $frame.varframe $frame.btn.b3"
+
+    set ready_to_exit F
+    while { $ready_to_exit == "F" } {
+
+        tkwait variable toor_go_back_to_first_menu
+
+        ToorDestroyEntryErrorsList
+
+        if { $toor_go_back_to_first_menu == "Y" } {
+            set ready_to_exit T
+        } else {
+            set err_list {}
+            if { $toor_vars(new,local_is_asas_master) == "asasmaster" } {
+                if { $toor_vars(new,enclave) != "" } {
+                    ToorAddToErrorList err_list "Enclave" \
+                                [ ToorCheckEnclaveCode $toor_vars(new,enclave) ]
+                }
+                ToorAddToErrorList err_list "Domain" \
+                              [ ToorCheckDomainname $toor_vars(new,nis_domain) ]
+            } else {
+
+                ToorAddToErrorList err_list "Host Name" \
+                             [ ToorCheckHostname $toor_vars(new,asas_hostname) ]
+                ToorAddToErrorList err_list "Master & Local Host Names" \
+                           [ ToorCheckNameUnique $toor_vars(new,asas_hostname) \
+                                                $toor_vars(new,local_hostname) ]
+                ToorAddToErrorList err_list "IP Address" \
+                           [ ToorCheckIPAddr $toor_vars(new,asas_ip) ]
+                ToorAddToErrorList err_list "Master & Local IP Addresses" \
+                           [ ToorCheckIPUnique $toor_vars(new,asas_ip) \
+                                               $toor_vars(new,local_ip) ]
+                ToorAddToErrorList err_list "Organization" \
+                          [ ToorCheckOptOganization $toor_vars(new,mst_organiz)]
+                ToorAddToErrorList err_list "Role Type" \
+                           [ ToorCheckOptRoleType $toor_vars(new,mst_role_typ) ]
+                ToorAddToErrorList err_list "Role" \
+                             [ ToorCheckOptRole $toor_vars(new,mst_role) ]
+            }
+            set ready_to_exit [ eval ToorDisplayErrors \
+                               {"Workstation Configuration"} \
+                               $err_list ]
+        }
+    }
+
+    if { $toor_vars(new,enclave) == "" } {
+        set toor_vars(new,enclave) "AA"
+    }
+
+    if { $toor_vars(new,local_is_asas_master) == "asasclient" } {
+        set toor_vars(new,enclave) "??"
+        set toor_vars(new,nis_domain) "Will Fetch From Master"
+    }
+
+    ToorPleaseWait
+
+    destroy  $frame
+
+    if { $toor_go_back_to_first_menu == "N" } {
+        if { $toor_vars(new,local_is_asas_master) == "asasmaster" } {
+            ToorGetClients $frame
+        } else {
+            ToorWarnClient $frame
+        }
+    }
+}
+
+################################################################################
+#
+# Set bindings so user can use either space or return to select entries on a
+# listbox.  Selection causes to named proc to be invoked
+#
+proc ToorSetListBindings { listbx last proc } {
+    bind $listbx <Key-space> $proc
+    bind $listbx <Key-Return> $proc
+    bind $listbx <Key-space> {+focus [tk_focusNext %W]}
+    bind $listbx <Key-Return> {+focus [tk_focusNext %W]}
+    if { ! $last } {
+        bind $listbx <Key-space> {+set toor_list_changed 1}
+        bind $listbx <Key-Return> {+set toor_list_changed 1}
+    }
+}
+
+################################################################################
+#
+# Set bindings for entry boxes associated with selection lists to call proc
+# when focus is lost and the value has been changed
+#
+proc ToorSetEntryForListBindings { entrybx proc } {
+    bind $entrybx <FocusIn> "+ToorSaveEntryValue $entrybx"
+    bind $entrybx <FocusOut> "+ToorCallIfChanged $entrybx $proc "
+}
+
+################################################################################
+#
+# Create selection lists for org/role type/role
+#
+proc ToorUnitSelectionLists { frame e_list s_list organiz_list org_ip_list \
+                              organiz role_typ role proc } {
+    global toor_list_changed
+    upvar 1 $e_list entry_list
+    upvar 1 $s_list select_list
+
+    catch              {destroy $frame} err_code
+    frame              $frame
+    set toor_list_changed 0
+
+    set org_list       [ ToorDisplayList $frame.org "Organization:"  3 25 \
+                                         $organiz  left entry_list ]
+    set role_type_list [ ToorDisplayList $frame.type "Role Type:"    3  8 \
+                                         $role_typ left entry_list ]
+    set role_list      [ ToorDisplayList $frame.role "Role:"         3 15 \
+                                         $role     left entry_list ]
+
+    lappend select_list $org_list $role_type_list $role_list
+
+    ToorSetListBindings $org_list 0 "ToorSetEntryFromList $organiz $org_list \
+                   { ToorSetRoleTypList $organiz_list $org_ip_list \
+                                        $role_type_list $role_typ $role_list \
+                                        $role $organiz}"
+
+    ToorSetListBindings $role_type_list 0 \
+            "ToorSetEntryFromList $role_typ $role_type_list \
+                   { ToorSetRoleList $organiz_list $org_ip_list $role_list  \
+                                     $role $organiz $role_typ }"
+
+    ToorSetListBindings $role_list 1 "ToorSetEntryFromList $role $role_list \
+                   { $proc ; set toor_list_changed 0 }"
+
+    set cmd { if { $toor_list_changed } }
+    lappend cmd " $proc ; set toor_list_changed 0  "
+    
+    bind $role_list <Tab> "+$cmd"
+    bind $org_list  <F1>  "+$cmd"
+
+    ToorSetEntryForListBindings [ lindex $entry_list 0 ] \
+            "ToorSetOrgList $organiz_list $org_ip_list $org_list 0 $organiz \
+                            $role_type_list $role_typ $role_list $role "
+    ToorSetEntryForListBindings [ lindex $entry_list 1 ] \
+            "ToorSetRoleTypList $organiz_list $org_ip_list $role_type_list \
+                                $role_typ $role_list $role $organiz "
+    ToorSetEntryForListBindings [ lindex $entry_list 2 ] \
+            "ToorSetRoleList $organiz_list $org_ip_list $role_list $role \
+                             $organiz $role_typ "
+
+    pack $frame
+
+}
+
+################################################################################
+#
+# Set Organization/Role Type/Role based on host name 
+#
+proc ToorSetOrgRoleFromHost { old_host host organiz_list org_ip_list org \
+                            role_type role org_listbx type_listbx role_listbx} {
+    global TOOR_UNL_HOST_INDEX TOOR_UNL_ROLE_INDEX \
+           TOOR_UNL_ROLE_TYPE_INDEX TOOR_ORG_CELL_INDEX TOOR_ORG_ORG_INDEX
+
+    upvar #0 $org up_org
+    upvar #0 $role_type up_role_type
+    upvar #0 $role up_role
+    upvar #0 $organiz_list org_list
+    upvar #0 $org_ip_list ip_list
+
+    ToorPleaseWait
+
+    set found 0
+    foreach org_ip_line $ip_list {
+        if { [ llength $org_ip_line ] > $TOOR_UNL_ROLE_TYPE_INDEX } {
+            if { $host == [ lindex $org_ip_line $TOOR_UNL_HOST_INDEX ] } {
+                set local_role [ lindex $org_ip_line $TOOR_UNL_ROLE_INDEX ]
+                set local_cell [ lindex $org_ip_line $TOOR_ORG_CELL_INDEX ]
+                set local_role_type [ lindex $org_ip_line \
+                                             $TOOR_UNL_ROLE_TYPE_INDEX ]
+                set found 1
+                break
+            }
+        }
+    }
+
+    if { $found } {
+        set found 0
+        foreach org_line $org_list {
+            if { [ llength $org_line ] > $TOOR_ORG_ORG_INDEX } {
+                if { $local_cell == [lindex $org_line $TOOR_ORG_CELL_INDEX] } {
+                    set local_org [ lindex $org_line $TOOR_ORG_ORG_INDEX ]
+                    set found 1
+                    break
+                }
+            }
+        }
+    }
+
+    if { $found } {
+        if { $local_role != "" } {
+            set up_role $local_role
+        }
+        if { $local_role_type != "" } {
+            set up_role_type $local_role_type
+        }
+        if { $local_org != "" } {
+            set up_org $local_org
+        }
+        ToorSetOrgList $organiz_list $org_ip_list $org_listbx 0 $org  \
+                       $type_listbx $role_type $role_listbx $role
+    }
+}
+
+################################################################################
+#
+# Format command to set hostname and associated fields to values that
+# correspond to the entries selected in the lists
+#
+proc ToorCmdToUpdateHostFromList { org_var type_var role_var host_var \
+                                   ip_var or_var uic_var urn_var or_file } {
+
+    global TOOR_LAST_CONFIG_DIR \
+           TOOR_UNL_HOST_INDEX TOOR_UNL_CELL_INDEX TOOR_UNL_ROLE_TYPE_INDEX \
+           TOOR_UNL_ROLE_INDEX
+
+    set cmd [ format {set tmp [ ToorGetUnlList toor_org_ip_list %s %s \
+                              [ ToorGetCellFromOrg toor_organiz_list $%s ] \
+                              %s $%s %s $%s ] ; if {$tmp != ""}} \
+              $TOOR_UNL_HOST_INDEX $TOOR_UNL_CELL_INDEX \
+              $org_var $TOOR_UNL_ROLE_TYPE_INDEX $type_var \
+              $TOOR_UNL_ROLE_INDEX $role_var ]
+    set sub_cmd [ format {set %s [ lindex $tmp 0 ] ; \
+                  ToorNameChanged $%s $%s %s %s %s %s %s}\
+                  $host_var $host_var $host_var $ip_var $or_var $uic_var  \
+                  $urn_var "$TOOR_LAST_CONFIG_DIR/$or_file" ]
+    lappend cmd $sub_cmd
+ 
+    return $cmd               
+}
+
+################################################################################
+#
+# Propagate host name changes to related fields
+#
+proc ToorPropagateNameChange { host_entry ip_var or_var uic_var urn_var \
+                               org_var type_var role_var or_file box_list } {
+    global TOOR_LAST_CONFIG_DIR
+
+    bind $host_entry <FocusIn>  "+ToorSaveEntryValue $host_entry"
+    bind $host_entry <FocusOut> "+ToorCheckEntryChange $host_entry \
+                                     ToorNameChanged $ip_var \
+                                     $or_var $uic_var $urn_var \
+                                     $TOOR_LAST_CONFIG_DIR/$or_file "
+    bind $host_entry <FocusOut> "+ToorCheckEntryChange $host_entry \
+                                     ToorSetOrgRoleFromHost toor_organiz_list \
+                                     toor_org_ip_list \
+                                     $org_var $type_var $role_var \
+                                     [ lindex $box_list 0] \
+                                     [ lindex $box_list 1] \
+                                     [ lindex $box_list 2]"
+}
+
+################################################################################
+#
+# Select proper set of windows for selection method (list selection or typing)
+# chosen by user, and set to update when button pressed
+#
+proc ToorActivateEntryMethod { select_list entry_list select_btn } {
+
+    global toor_vars
+
+    set list_cmd "ToorSelectEntryMethod {$select_list} {$entry_list} \
+                  toor_vars(new,list_selection)"
+    eval $list_cmd
+    $select_btn.0 configure -command $list_cmd
+    $select_btn.1 configure -command $list_cmd
+
+}
+
+################################################################################
+#
+# Display "Please Wait"
+#
+proc ToorPleaseWait { } {
+
+    if { ! [ winfo exists .wait ] } {
+        toplevel .wait -borderwidth 1
+        label    .wait.main_title -text "\nPlease Wait\n"
+        pack     .wait.main_title -side top
+        update
+        destroy  .wait
+    }
+}
+
+################################################################################
+#
+# Allow user to specify new configuration for local workstation
+#
+proc ToorGetLocalConfig { frame } {
+    global toor_go_back_to_first_menu toor_vars \
+           toor_organiz_list toor_org_ip_list \
+           TOOR_OR_NAME_FILE toor_interfaces toor_fddi_present
+
+    set toor_entry_list {}
+    set toor_select_list {}
+
+    frame  $frame
+    pack   $frame
+    label  $frame.main_title \
+                          -text "Workstation Network Configuration\n"
+    pack   $frame.main_title -side top
+
+
+    set    local_info [ToorLabelledSubframe $frame.title local \
+                       "This Workstation's Configuration" top 1 ]
+    set    top [frame $local_info.top]
+    set    mid [frame $local_info.mid]
+    set    low [frame $local_info.low]
+    pack   $top $mid $low -side top -fill x
+
+    # set up command to update other info when selection changes
+    set cmd [ ToorCmdToUpdateHostFromList toor_vars(new,our_organiz) \
+                                          toor_vars(new,our_role_typ) \
+                                          toor_vars(new,our_role) \
+                                          toor_vars(new,local_hostname) \
+                                          toor_vars(new,local_ip) \
+                                          toor_vars(new,or_name) \
+                                          toor_vars(new,uic) \
+                                          toor_vars(new,our_urn) \
+                                          $TOOR_OR_NAME_FILE ]
+
+    ToorLabelledRadiobuttons $top.select "Data Entry Method:" \
+                             toor_vars(new,list_selection) normal left 0 \
+                             "Select From Lists"    1 \
+                             "Type Information"     0
+
+    label             $top.space -text " "
+    pack              $top.space -side top
+
+    ToorDisplayHost   $top.host   toor_vars(new,local_hostname) left normal
+    ToorDisplayIp     $top.ip     toor_vars(new,local_ip)       left normal
+    pack              $top.host   $top.ip -side left
+    ToorDisplayUic    $top.uic    toor_vars(new,uic)            left top normal
+    ToorDisplayOrName $mid.or     toor_vars(new,or_name)        left normal
+    pack              $mid.or     -side left
+    ToorDisplayUrn    $mid.urn    toor_vars(new,our_urn)        left left normal
+
+    label             $low.spacer -text " "
+    pack              $low.spacer -side top
+
+    ToorUnitSelectionLists $low.lists toor_entry_list toor_select_list \
+                           toor_organiz_list toor_org_ip_list \
+                           toor_vars(new,our_organiz) \
+                           toor_vars(new,our_role_typ) \
+                           toor_vars(new,our_role) \
+                           $cmd
+
+    lappend toor_entry_list $top.host.entry $top.ip.entry $top.uic.entry \
+                            $mid.or.entry $mid.urn.entry
+
+    set cmd "ToorLabelledRadiobuttons $frame.le {Network Interface:} \
+             toor_vars(new,net_intfc) normal left 0 "
+    foreach ifce $toor_interfaces {
+        append cmd " " $ifce " " $ifce
+    }
+    eval $cmd
+
+    label  $frame.spacer -text " "
+    pack   $frame.spacer -side top
+
+    if { $toor_fddi_present } {
+        ToorLabelledRadiobuttons $frame.fddi \
+               "Is the FDDI or CDDI Interface in Use?" \
+                              toor_vars(new,fddi_used) normal \
+                              left    0 \
+                              "Yes"   Y \
+                              "No"    N
+        pack  $frame.fddi -side top
+        label $frame.space1 -text " "
+        pack  $frame.space1 -side top
+    }
+
+
+    ToorButtonSet     $frame.btn N toor_go_back_to_first_menu dummy \
+                      "Done"  N \
+                      "Cancel" Y
+    pack $frame.btn -side top
+
+    catch { set toor_vars(new,hostid) [ exec /usr/ucb/hostid ] } ret_code
+
+    update
+    ToorPleaseWait
+    ToorSetOrgList  toor_organiz_list toor_org_ip_list \
+                   [ lindex $toor_select_list 0 ] 1 toor_vars(new,our_organiz) \
+                   [ lindex $toor_select_list 1 ] toor_vars(new,our_role_typ) \
+                   [ lindex $toor_select_list 2 ] toor_vars(new,our_role)
+
+    ToorPropagateNameChange $top.host.entry toor_vars(new,local_ip) \
+                            toor_vars(new,or_name) toor_vars(new,uic) \
+                            toor_vars(new,our_urn) toor_vars(new,our_organiz) \
+                            toor_vars(new,our_role_typ) \
+                            toor_vars(new,our_role) $TOOR_OR_NAME_FILE \
+                            $toor_select_list
+
+    ToorActivateEntryMethod $toor_select_list $toor_entry_list \
+                            $top.select.buttons
+
+    set ready_to_exit F
+    while { $ready_to_exit == "F" } {
+
+        tkwait variable toor_go_back_to_first_menu
+
+        ToorDestroyEntryErrorsList
+
+        if { $toor_go_back_to_first_menu == "Y" } {
+            set ready_to_exit T
+        } else {
+            set err_list {}
+            ToorAddToErrorList err_list "Host Name" \
+                            [ ToorCheckHostname $toor_vars(new,local_hostname) ]
+            ToorAddToErrorList err_list "IP Address" \
+                            [ ToorCheckIPAddr $toor_vars(new,local_ip) ]
+            ToorAddToErrorList err_list "O/R Name" \
+                            [ ToorCheckORName toor_vars(new,or_name) ]
+            ToorAddToErrorList err_list "UIC" \
+                            [ ToorCheckUIC $toor_vars(new,uic) ]
+            ToorAddToErrorList err_list "URN" \
+                            [ ToorCheckURN $toor_vars(new,our_urn) ]
+            ToorAddToErrorList err_list "Organization" \
+                            [ ToorCheckOganization $toor_vars(new,our_organiz) ]
+            ToorAddToErrorList err_list "Role Type" \
+                            [ ToorCheckRoleType $toor_vars(new,our_role_typ) ]
+            ToorAddToErrorList err_list "Role" \
+                            [ ToorCheckRole $toor_vars(new,our_role) ]
+
+            set ready_to_exit [ eval ToorDisplayErrors \
+                                     {"Workstation Network Configuration"} \
+                                     $err_list ]
+        }
+    }
+
+    set toor_vars(new,or_name_s) [string trim $toor_vars(new,or_name)]
+
+    ToorPleaseWait
+
+    destroy $frame
+}
+
+################################################################################
+#
+# Allow user to specify new fddi/cddi configuration for local workstation
+#
+proc ToorGetFddiConfig { frame } {
+    global toor_go_back_to_first_menu toor_vars \
+           toor_organiz_list toor_org_ip_list \
+           TOOR_FDDI_OR_NAME_FILE
+
+    set toor_entry_list {}
+    set toor_select_list {}
+
+    catch  {destroy $frame} err_code
+
+    frame  $frame
+    pack   $frame
+    label  $frame.main_title \
+                          -text "Workstation FDDI/CDDI Configuration\n"
+    pack   $frame.main_title -side top
+
+
+    set  fddi  [ frame $frame.fddi_info ]
+    pack $fddi -side top -anchor w -fill x
+    ToorLabelledRadiobuttons $fddi.select "Data Entry Method:" \
+                             toor_vars(new,list_selection) normal left 0 \
+                             "Select From Lists"    1 \
+                             "Type Information"     0
+
+    label  $fddi.space  -text " "
+    pack   $fddi.space -side top
+
+    # set up command to update other info when selection changes
+    set cmd [ ToorCmdToUpdateHostFromList toor_vars(new,fddi_organiz) \
+                                          toor_vars(new,fddi_role_typ) \
+                                          toor_vars(new,fddi_role) \
+                                          toor_vars(new,fddi_hostname) \
+                                          toor_vars(new,fddi_ip) \
+                                          toor_vars(new,fddi_or_name) \
+                                          toor_dummy \
+                                          toor_dumm2 \
+                                          $TOOR_FDDI_OR_NAME_FILE ]
+
+    set  fddih [ frame $fddi.high ]
+    set  fddim [ frame $fddi.mid ]
+    set  fddil [ frame $fddi.low ]
+    pack $fddih $fddim $fddil -side top -anchor w -fill x
+
+    ToorDisplayHost   $fddih.host  toor_vars(new,fddi_hostname) left normal
+    ToorDisplayIp     $fddih.ip    toor_vars(new,fddi_ip)       left normal
+    pack              $fddih.host  $fddih.ip -side left
+
+    ToorDisplayOrName $fddim.or     toor_vars(new,fddi_or_name)  left normal
+    pack              $fddim.or -fill x
+
+    label             $fddil.spacer  -text " "
+    pack              $fddil.spacer -side top
+
+    ToorUnitSelectionLists $fddil.lists toor_entry_list toor_select_list \
+                           toor_organiz_list toor_org_ip_list \
+                           toor_vars(new,fddi_organiz) \
+                           toor_vars(new,fddi_role_typ) \
+                           toor_vars(new,fddi_role) \
+                           $cmd
+
+    lappend toor_entry_list $fddih.host.entry $fddih.ip.entry $fddim.or.entry
+
+    ToorButtonSet     $frame.btn N toor_go_back_to_first_menu dummy \
+                      "Done"  N \
+                      "Cancel" Y
+    pack $frame.btn -side top
+
+    update
+    ToorPleaseWait
+    ToorSetOrgList toor_organiz_list toor_org_ip_list \
+                  [ lindex $toor_select_list 0 ] 1 toor_vars(new,fddi_organiz) \
+                  [ lindex $toor_select_list 1 ] toor_vars(new,fddi_role_typ) \
+                  [ lindex $toor_select_list 2 ] toor_vars(new,fddi_role)
+
+    ToorPropagateNameChange $fddih.host.entry toor_vars(new,fddi_ip) \
+                            toor_vars(new,fddi_or_name) toor_dummy toor_dumm2 \
+                            toor_vars(new,fddi_organiz) \
+                            toor_vars(new,fddi_role_typ) \
+                            toor_vars(new,fddi_role) $TOOR_FDDI_OR_NAME_FILE \
+                            $toor_select_list
+
+    ToorActivateEntryMethod $toor_select_list $toor_entry_list \
+                            $fddi.select.buttons
+
+    set ready_to_exit F
+    while { $ready_to_exit == "F" } {
+
+        tkwait variable toor_go_back_to_first_menu
+
+        ToorDestroyEntryErrorsList
+
+        if { $toor_go_back_to_first_menu == "Y" } {
+            set ready_to_exit T
+        } else {
+            set err_list {}
+            ToorAddToErrorList err_list "FDDI Host Name" \
+                        [ ToorCheckHostname $toor_vars(new,fddi_hostname) ]
+            ToorAddToErrorList err_list "Ethernet & FDDI/CDDI Host Names" \
+                        [ ToorCheckNameUnique \
+                                        $toor_vars(new,local_hostname) \
+                                        $toor_vars(new,fddi_hostname) ]
+            ToorAddToErrorList err_list "FDDI IP Address" \
+                        [ ToorCheckIPAddr $toor_vars(new,fddi_ip) ]
+            ToorAddToErrorList err_list "Ethernet & FDDI IP Addresses" \
+                        [ ToorCheckIPDiffSubnets  $toor_vars(new,local_ip) \
+                                                  $toor_vars(new,fddi_ip) ]
+            ToorAddToErrorList err_list "FDDI/CDDI O/R Name" \
+                        [ ToorCheckORName toor_vars(new,fddi_or_name) ]
+            ToorAddToErrorList err_list "Ethernet & FDDI/CDDI O/R Name" \
+                        [ ToorCheckORUnique $toor_vars(new,or_name) \
+                                            $toor_vars(new,fddi_or_name) ]
+            ToorAddToErrorList err_list "Organization" \
+                        [ ToorCheckOganization $toor_vars(new,fddi_organiz)]
+            ToorAddToErrorList err_list "Role Type" \
+                        [ ToorCheckRoleType $toor_vars(new,fddi_role_typ) ]
+            ToorAddToErrorList err_list "Role" \
+                        [ ToorCheckRole $toor_vars(new,fddi_role) ]
+
+            set ready_to_exit [ eval ToorDisplayErrors \
+                                     {"Workstation FDDI/CDDI Configuration"} \
+                                     $err_list ]
+
+        }
+    }
+
+    ToorPleaseWait
+
+    destroy $frame
+}
+
+################################################################################
+#
+# set value to table entry, then enable or disable field
+#
+proc ToorSetDisplayParams { window variable value config_string } {
+
+    upvar $variable       his_var
+    upvar $config_string  my_cs
+
+    set toor_dev_parms(cgfourteen0)   "/dev/cgfourteen0"
+    set toor_dev_parms(cgfourteen0_h) "/dev/cgfourteen0"
+    set toor_dev_parms(cgfourteen1)   "/dev/cgfourteen1"
+    set toor_dev_parms(cgfourteen1_h) "/dev/cgfourteen1"
+    set toor_dev_parms(cgsix0)        "/dev/cgsix0"
+    set toor_dev_parms(tvtwo0)        "/dev/fbs/tvtwo0"
+    set toor_dev_parms(laptop0)       "/dev/fb -noport -maxfb"
+    set toor_dev_parms(none)          ""
+    set toor_dev_parms(other)         "/dev/"
+    set toor_dev_parms(ffb0)          "/dev/ffb0"
+
+    set my_cs $toor_dev_parms($his_var)
+
+    ToorEnableWindowOnValue $window his_var $value
+
+}
+
+################################################################################
+#
+# Allow user to specify new configuration for video displays
+#
+proc ToorGetDisplayConfig { frame } {
+    global toor_go_back_to_first_menu toor_vars
+
+    frame  $frame
+    pack   $frame
+    label  $frame.main_title \
+                          -text "Workstation Display Configuration\n"
+    pack   $frame.main_title -side top
+    set    dframe [ frame  $frame.displays ]
+    pack   $dframe -side top
+
+    set    lframe [ frame  $dframe.left -borderwidth 1 ]
+    pack   $lframe -side left
+    set    rframe [ frame  $dframe.right -borderwidth 1 ]
+    pack   $rframe -side left
+    ToorLabelledRadiobuttons $lframe.display \
+           "Left or Only Display Device:" toor_vars(new,left_video) normal \
+                          top 0 \
+                          "cgfourteen0 - high res" cgfourteen0_h \
+                          "cgfourteen0"            cgfourteen0 \
+                          "Parallax (tvtwo0)"      tvtwo0 \
+                          "cgsix0"                 cgsix0 \
+                          "ffb0"                   ffb0 \
+                          "Laptop"                 laptop0 \
+                          "Other(Type device & options):"   other
+
+    set leframe [ entry $lframe.display.buttons.entry -width 23 -borderwidth 1 \
+        -textvariable toor_vars(new,left_video_cmd) ]
+    $leframe configure -state disabled
+    pack     $leframe -side top -padx 0 -anchor w
+
+    if { $toor_vars(new,left_video) != "other" } {
+        ToorSetDisplayParams $leframe toor_vars(new,left_video) other \
+                             toor_vars(new,left_video_cmd)
+    }
+
+    foreach btn "cgfourteen0 cgfourteen0_h tvtwo0 cgsix0 ffb0 laptop0 other" {
+        $lframe.display.buttons.$btn configure -command \
+            "ToorSetDisplayParams $leframe toor_vars(new,left_video) other \
+             toor_vars(new,left_video_cmd)"
+    }
+
+    ToorLabelledRadiobuttons $rframe.display \
+           "Right Display Device:" toor_vars(new,right_video) normal \
+                          top 0 \
+                          "cgfourteen1 - high res" cgfourteen1_h \
+                          "cgfourteen1"            cgfourteen1 \
+                          "Parallax (tvtwo0)"      tvtwo0 \
+                          "cgsix0"                 cgsix0 \
+                          "ffb0"                   ffb0 \
+                          "None"                   none \
+                          "Other(Type device & options):"   other
+
+    set reframe [ entry $rframe.display.buttons.entry -width 23 -borderwidth 1 \
+        -textvariable toor_vars(new,right_video_cmd) ]
+    $reframe configure -state disabled
+    pack     $reframe -side top -padx 0 -anchor w
+
+    if { $toor_vars(new,right_video) != "other" } {
+        ToorSetDisplayParams $reframe toor_vars(new,right_video) other \
+                             toor_vars(new,right_video_cmd)
+    }
+
+    foreach btn "cgfourteen1 cgfourteen1_h tvtwo0 cgsix0 ffb0 none other" {
+        $rframe.display.buttons.$btn configure -command \
+            "ToorSetDisplayParams $reframe toor_vars(new,right_video) other \
+             toor_vars(new,right_video_cmd)"
+    }
+
+    ToorButtonSet     $frame.btn N toor_go_back_to_first_menu dummy \
+                      "Done"   N \
+                      "Cancel" Y
+
+    pack $frame.btn -side top
+
+    tkwait variable toor_go_back_to_first_menu
+
+    ToorPleaseWait
+
+    destroy $frame
+
+}
+
+################################################################################
+#
+# Display error dialog window if date/time group is invalid, User must hit OK
+# to exit, since routine does a grab
+#
+proc ToorDateTimeError { } {
+    global toor_go_back_to_first_menu
+    toplevel .oops -borderwidth 1
+    label .oops.message -text "! Incorrect Date/Time Format\n"
+    pack  .oops.message -side top
+    label .oops.msg2 -text "Enter as \"ddhhmmZ MON yy\""
+    pack  .oops.msg2 -side top
+    label .oops.msg3 -text "All characters and spaces must be entered"
+    pack  .oops.msg3 -side top
+    label .oops.msg4 -text "Time is set when \"Set\" selected\n"
+    pack  .oops.msg4 -side top
+    ToorButtonSet .oops.btn Y toor_go_back_to_first_menu dummy \
+               "OK"  Y
+    pack  .oops.btn -side top
+    grab .oops
+
+    tkwait variable toor_go_back_to_first_menu
+    
+    destroy .oops
+}
+
+################################################################################
+#
+# Display current time, keeping it updated
+#
+proc ToorDisplayCurrentTime { frame } {
+    global toor_go_back_to_first_menu toor_time_now
+    set toor_time_now [ string toupper [ exec /usr/bin/date -u "+%d%H%MZ %h %y" ] ]
+    if { $toor_go_back_to_first_menu == "" } { 
+        if {![winfo exists $frame]} {
+            ToorLabelledEntry $frame "Time is Now:" 14 toor_time_now top \
+                              disabled
+            pack $frame
+        }
+        after 1000 ToorDisplayCurrentTime $frame
+    }
+}
+
+################################################################################
+#
+# Display current time, keeping it updated
+#
+proc ToorGetCurrentTime { frame } {
+    global toor_go_back_to_first_menu toor_time_set
+
+    array set mon_tbl [ list {JAN} {01} {FEB} {02} {MAR} {03} {APR} {04} \
+                             {MAY} {05} {JUN} {06} {JUL} {07} {AUG} {08} \
+                             {SEP} {09} {OCT} {10} {NOV} {11} {DEC} {12} ]
+
+    array set mon_len [ list {JAN} {31} {FEB} {29} {MAR} {31} {APR} {30} \
+                             {MAY} {31} {JUN} {30} {JUL} {31} {AUG} {31} \
+                             {SEP} {30} {OCT} {31} {NOV} {30} {DEC} {31} ]
+
+    frame $frame
+    pack  $frame
+    label $frame.main_title -text "Set System Time\n"
+    pack  $frame.main_title -side top
+    frame $frame.dates
+    pack  $frame.dates
+    frame $frame.dates.left
+    pack  $frame.dates.left -side left
+    frame $frame.dates.mid
+    pack  $frame.dates.mid -side left
+    frame $frame.dates.right
+    pack  $frame.dates.right -side left -fill y
+
+    set   time_entered_ok 0
+
+    while {! $time_entered_ok} { 
+
+        set toor_time_set \
+                [string toupper [exec /usr/bin/date -u "+%d%H%MZ %h %y"]]
+        set toor_go_back_to_first_menu ""
+
+        if {![winfo exists $frame.dates.left.time]} {
+            ToorDisplayCurrentTime $frame.dates.left.time
+            pack $frame.dates.left.time -side top
+            button $frame.dates.left.btn -text "OK" -borderwidth 1 \
+                    -command "set toor_go_back_to_first_menu N"
+            pack $frame.dates.left.btn -side top
+            focus $frame.dates.left.btn
+
+            ToorLabelledEntry $frame.dates.mid.ent "Update Time To:" 14 \
+                              toor_time_set top normal
+            pack $frame.dates.mid.ent -side top
+            button $frame.dates.mid.btn -text "Set" -borderwidth 1 \
+                    -command "set toor_go_back_to_first_menu S"
+            pack $frame.dates.mid.btn -side top
+
+            button $frame.dates.right.btn -text "Cancel" -borderwidth 1 \
+                    -command "set toor_go_back_to_first_menu Y"
+            pack $frame.dates.right.btn -side bottom
+
+        }
+
+        tkwait variable toor_go_back_to_first_menu
+
+        if { $toor_go_back_to_first_menu == "S" } {
+
+            if [ string match \
+   {[0-3][0-9][0-5][0-9][0-5][0-9]Z [ADFJMNOS][ACEOPU][BCGLNPRTVY] [0-9][0-9]} \
+                 $toor_time_set ] {
+                 set dd [ string range $toor_time_set 0 1 ]
+                 set HH [ string range $toor_time_set 2 3 ]
+                 set MM [ string range $toor_time_set 4 5 ]
+                 set mon [ string toupper [ string range $toor_time_set 8 10 ] ]
+                 set yy [ string range $toor_time_set 12 13 ]
+
+                 # set number of days in February based on year
+                 if { [ expr $yy % 4 ] == 0 } {
+                     set mon_len(FEB) 29
+                 } else {
+                     set mon_len(FEB) 28
+                 }
+
+                 # Set century to 19xx if year is 50 to 99,
+                 # century is 20xx otherwise
+                 if { $yy >= 50 } {
+                    set cc 19
+                 } else {
+                    set cc 20
+                 }
+
+                 scan "$dd" "%d" d
+
+                 # Even though HH and MM may take on values of 08 and 09
+                 # that would normally be rejected as invalid octal (due to 
+                 # the leading 0) values, tcl defaults to performing a string
+                 # comparison as long as the values can't be interpreted
+                 # as a number.  This string comparison yields the correct
+                 # results, so HH and MM are not scan'ed to numeric values
+
+                 if { [info exists mon_tbl($mon)] \
+                      && $d >= 1  &&  $d <= $mon_len($mon) \
+                      && $HH <= 23 
+                      && $MM <= 59  } {
+                     set mm $mon_tbl($mon)
+
+                     set result [ catch \
+                         { exec /usr/bin/date -u $mm$dd$HH$MM$cc$yy } ret_code ]
+                     if { $result == 0 } {
+                         set time_entered_ok 1
+                         set toor_go_back_to_first_menu N
+                     } else {
+                         ToorDateTimeError
+                     }
+                 } else {
+                     ToorDateTimeError
+                 }
+             } else {
+                 # Error in input format
+                 ToorDateTimeError
+             }
+
+         } else {
+             # Cancel or OK selected, exit loop
+             set time_entered_ok 1
+         }
+
+    }  ;# end while time not entered correctly
+
+    ToorPleaseWait
+ 
+    destroy $frame
+}
+
+################################################################################
+#
+# Get DCE information for a workstation that will use the address book & beacon
+# Beacon will determine who becomes the server and address book will determine
+# the dce cell name
+#
+proc ToorSetBeaconDceConfig { } {
+    global toor_vars
+    set toor_vars(new,asas_is_dce_master)  "dcemaster"
+    set toor_vars(new,local_is_dce_master) "addrbk"
+    set toor_vars(new,dce_hostname)        "TBD"
+    set toor_vars(new,dce_ip)              "TBD"
+    set toor_vars(new,dce_cell)            "Address Book Will Set (TBD)"
+}
+
+################################################################################
+#
+# Format command to set hostname and associated fields to values that
+# correspond to the entries selected in the lists
+#
+proc ToorCmdToUpdateDceHostFromList { org_var type_var role_var host_var \
+                                      ip_var or_var uic_var urn_var or_file \
+                                      cell_var } {
+
+    global TOOR_LAST_CONFIG_DIR \
+           TOOR_UNL_HOST_INDEX TOOR_UNL_CELL_INDEX TOOR_UNL_ROLE_TYPE_INDEX \
+           TOOR_UNL_ROLE_INDEX
+
+    set cmd [ format {set tmp [ ToorGetUnlList toor_org_ip_list %s %s \
+                              [ ToorGetCellFromOrg toor_organiz_list $%s ] \
+                              %s $%s %s $%s ] ; if {$tmp != ""}} \
+              $TOOR_UNL_HOST_INDEX $TOOR_UNL_CELL_INDEX \
+              $org_var $TOOR_UNL_ROLE_TYPE_INDEX $type_var \
+              $TOOR_UNL_ROLE_INDEX $role_var ]
+    set sub_cmd [ format {set %s $tmp ; \
+                          ToorNameChanged $%s $%s %s %s %s %s %s ; \
+                          ToorDceNameChanged $%s $%s %s %s }\
+                  $host_var $host_var $host_var $ip_var $or_var $uic_var  \
+                  $urn_var "$TOOR_LAST_CONFIG_DIR/$or_file" \
+                  $host_var $host_var $ip_var $cell_var ]
+    lappend cmd $sub_cmd
+ 
+    return $cmd
+}
+
+################################################################################
+#
+# Get DCE information for a workstation that is a subsystem client,
+# Always get the cell name, and get host name and ip address if the DCE
+# server is on another BFA or ASAS Subsystem
+#
+proc ToorGetDceSubConfig { frame next } {
+    global toor_vars TOOR_OR_NAME_FILE
+
+    if { [winfo exists $frame.master] } {
+        destroy $frame.master
+    }
+    if { [winfo exists $frame.cell_name] } {
+        destroy $frame.cell_name
+    }
+    if { [winfo exists $frame.low] } {
+        destroy $frame.low
+    }
+
+    set toor_entry_list  {}
+    set toor_select_list {}
+
+    if { $toor_vars(new,asas_is_dce_master) == "dcemaster" } {
+        set state                       normal
+        set toor_vars(new,dce_hostname) $toor_vars(orig,dce_hostname)
+        set toor_vars(new,dce_ip)       $toor_vars(orig,dce_ip)
+        set toor_vars(new,dce_organiz)  $toor_vars(orig,dce_organiz)
+        set toor_vars(new,dce_role_typ) $toor_vars(orig,dce_role_typ)
+        set toor_vars(new,dce_role)     $toor_vars(orig,dce_role)
+
+    } else {
+	set state                       disabled
+        set toor_vars(new,dce_hostname) $toor_vars(new,asas_hostname)
+        set toor_vars(new,dce_ip)       $toor_vars(new,asas_ip)
+        set toor_vars(new,dce_organiz)  $toor_vars(new,mst_organiz)
+        set toor_vars(new,dce_role_typ) $toor_vars(new,mst_role_typ)
+        set toor_vars(new,dce_role)     $toor_vars(new,mst_role)
+
+    }
+    if { $toor_vars(new,dce_hostname) != $toor_vars(orig,dce_hostname) } {
+        set toor_vars(new,dce_cell) [ ToorLookupCellName \
+                                          $toor_vars(new,dce_hostname) \
+                                          $toor_vars(new,dce_ip) ]
+    }
+    set subframe    [ToorLabelledSubframe $frame.master dce_workstation \
+                    "Where is the DCE Master Server?\n" top 0 ]
+
+    # set up command to update other info when selection changes
+    set cmd [ ToorCmdToUpdateDceHostFromList toor_vars(new,dce_organiz) \
+                                             toor_vars(new,dce_role_typ) \
+                                             toor_vars(new,dce_role) \
+                                             toor_vars(new,dce_hostname) \
+                                             toor_vars(new,dce_ip) \
+                                             toor_dummy \
+                                             toor_dummy2 \
+                                             toor_dummy3 \
+                                             $TOOR_OR_NAME_FILE \
+                                             toor_vars(new,dce_cell) ]
+
+    ToorLabelledRadiobuttons $subframe.select "Data Entry Method:" \
+                             toor_vars(new,list_selection) normal left 0 \
+                             "Select From Lists"    1 \
+                             "Type Information"     0
+
+    ToorDisplayHost $subframe.host   toor_vars(new,dce_hostname)  left $state
+    ToorDisplayIp   $subframe.ip     toor_vars(new,dce_ip)        left $state
+    pack            $subframe.host   -side left
+    pack            $subframe.ip     -side left
+    ToorDisplayDceCell $frame.cell_name toor_vars(new,dce_cell)   left normal
+    pack            $frame.master -anchor w -fill x
+    pack            $subframe -side top
+    pack            $frame.cell_name -side top -anchor w
+    set low         [ frame $frame.low ]
+    pack            $low -side top
+
+    ToorUnitSelectionLists $low.lists toor_entry_list \
+                           toor_select_list \
+                           toor_organiz_list toor_org_ip_list \
+                           toor_vars(new,dce_organiz) \
+                           toor_vars(new,dce_role_typ) \
+                           toor_vars(new,dce_role) \
+                           $cmd
+
+    lappend toor_entry_list $subframe.host.entry $subframe.ip.entry \
+                            $frame.cell_name.entry
+    update
+    ToorPleaseWait
+    ToorSetOrgList toor_organiz_list toor_org_ip_list \
+                  [ lindex $toor_select_list 0 ] 1 toor_vars(new,dce_organiz) \
+                  [ lindex $toor_select_list 1 ] toor_vars(new,dce_role_typ) \
+                  [ lindex $toor_select_list 2 ] toor_vars(new,dce_role)
+
+    ToorPropagateNameChange $subframe.host.entry toor_vars(new,dce_ip) \
+                            toor_dummy toor_dummy2 toor_dummy3 \
+                            toor_vars(new,dce_organiz) \
+                            toor_vars(new,dce_role_typ) \
+                            toor_vars(new,dce_role) $TOOR_OR_NAME_FILE \
+                            $toor_select_list
+
+
+    $low.lists.org.entry.info.entry  configure -state $state
+    $low.lists.type.entry.info.entry configure -state $state
+    $low.lists.role.entry.info.entry configure -state $state
+
+    ToorActivateEntryMethod $toor_select_list $toor_entry_list \
+                            $subframe.select.buttons
+
+    if { $state != "normal" } {
+        $subframe.select.buttons.0       configure -takefocus 0
+        $subframe.select.buttons.1       configure -takefocus 0
+        $subframe.host.entry             configure -takefocus 0
+        $subframe.ip.entry               configure -takefocus 0
+        $low.lists.org.sb.list           configure -takefocus 0
+        $low.lists.type.sb.list          configure -takefocus 0
+        $low.lists.role.sb.list          configure -takefocus 0
+        $low.lists.org.entry.info.entry  configure -takefocus 0
+        $low.lists.type.entry.info.entry configure -takefocus 0
+        $low.lists.role.entry.info.entry configure -takefocus 0
+        $frame.cell_name.entry           configure -takefocus 1
+        bind $next <Tab> {}
+        bind $next <F1>  {}
+    }
+
+
+    bind $subframe.host.entry <FocusIn>  \
+                    "+ToorSaveEntryValue $subframe.host.entry"
+    bind $subframe.host.entry <FocusOut> \
+                    "+ToorCheckEntryChange $subframe.host.entry \
+                                 ToorDceNameChanged toor_vars(new,dce_ip) \
+                                 toor_vars(new,dce_cell)"
+    bind $subframe.host.entry <FocusOut> \
+                    "+ToorCheckEntryChange $subframe.host.entry \
+                                     ToorSetOrgRoleFromHost toor_organiz_list \
+                                     toor_org_ip_list \
+                                     toor_vars(new,dce_organiz) \
+                                     toor_vars(new,dce_role_typ) \
+                                     toor_vars(new,dce_role) \
+                                     [ lindex $toor_select_list 0] \
+                                     [ lindex $toor_select_list 1] \
+                                     [ lindex $toor_select_list 2]"
+
+}
+
+################################################################################
+#
+# Get DCE information for a workstation that is a subsystem client,
+# DCE Cell server is always on another workstation, but it may be either the
+# ASAS subsystem master or on another BFA
+#
+proc ToorGetClientDceConfig { frame } {
+    global              toor_go_back_to_first_menu toor_vars
+    frame               $frame
+    pack                $frame
+    label               $frame.main_title \
+                        -text "Workstation Configuration"
+    pack                $frame.main_title -side top
+    label               $frame.title2 \
+                         -text "DCE Configuration for ASAS Subsystem Client\n"
+    pack                $frame.title2 -side top
+    ToorLabelledRadiobuttons $frame.dcemstr \
+                        "Where will the DCE Master Server Run?" \
+                        toor_vars(new,asas_is_dce_master) normal top 0 \
+                        "On the ASAS Subsystem Master"      asasmaster \
+                        "On another BFA or ASAS Subsystem"  dcemaster
+
+    set                 varframe [ frame $frame.varframe -borderwidth 1 ]
+    pack                $varframe -fill x -side top
+
+
+    ToorButtonSet       $frame.btn N toor_go_back_to_first_menu dummy \
+                        "Done"  N \
+                        "Cancel" Y
+    pack                $frame.btn -side top
+
+    ToorGetDceSubConfig $varframe $frame.btn.b3
+
+    $frame.dcemstr.buttons.asasmaster configure \
+                        -command "ToorPleaseWait ; \
+                                  ToorGetDceSubConfig $varframe $frame.btn.b3"
+    $frame.dcemstr.buttons.dcemaster configure \
+                        -command "ToorPleaseWait ; \
+                                  ToorGetDceSubConfig $varframe $frame.btn.b3"
+
+    set ready_to_exit F
+    while { $ready_to_exit == "F" } {
+
+        tkwait variable toor_go_back_to_first_menu
+
+        ToorDestroyEntryErrorsList
+
+        if { $toor_go_back_to_first_menu == "Y" } {
+            set ready_to_exit T
+        } else {
+            set err_list {}
+            ToorAddToErrorList err_list "Host Name" \
+                            [ ToorCheckHostname $toor_vars(new,dce_hostname) ]
+            ToorAddToErrorList err_list "IP Address" \
+                            [ ToorCheckIPAddr $toor_vars(new,dce_ip) ]
+            ToorAddToErrorList err_list "DCE Cell Name" \
+                            [ ToorCheckCellName $toor_vars(new,dce_cell) ]
+            ToorAddToErrorList err_list "Organization" \
+                         [ ToorCheckOptOganization $toor_vars(new,dce_organiz) ]
+            ToorAddToErrorList err_list "Role Type" \
+                           [ ToorCheckOptRoleType $toor_vars(new,dce_role_typ) ]
+            ToorAddToErrorList err_list "Role" \
+                            [ ToorCheckOptRole $toor_vars(new,dce_role) ]
+            set ready_to_exit [ eval ToorDisplayErrors \
+                               {"DCE Configuration for ASAS Subsystem Client"} \
+                               $err_list ]
+        }
+    }
+
+    ToorPleaseWait
+
+    destroy $frame
+}
+
+################################################################################
+#
+# Get DCE information for a workstation that is a subsystem master,
+# Always get the cell name, and get host name and ip address if the DCE
+# server is on another BFA or ASAS Subsystem
+#
+proc ToorGetDceMstrConfig { frame next } {
+    global toor_vars TOOR_OR_NAME_FILE
+
+    if { [winfo exists $frame.master] } {
+        destroy $frame.master
+    }
+    if { [winfo exists $frame.cell_name] } {
+        destroy $frame.cell_name
+    }
+    if { [winfo exists $frame.low] } {
+        destroy $frame.low
+    }
+
+    if { $toor_vars(new,local_is_dce_master) == "dcemaster" } {
+        set toor_vars(new,dce_hostname) $toor_vars(new,asas_hostname)
+        set toor_vars(new,dce_ip)       $toor_vars(new,asas_ip)
+        set toor_vars(new,dce_organiz)  $toor_vars(new,mst_organiz)
+        set toor_vars(new,dce_role_typ) $toor_vars(new,mst_role_typ)
+        set toor_vars(new,dce_role)     $toor_vars(new,mst_role)
+        if { $toor_vars(new,dce_hostname) != $toor_vars(orig,dce_hostname) } {
+            set toor_vars(new,dce_cell) [ ToorLookupCellName \
+                                              $toor_vars(new,dce_hostname) \
+                                              $toor_vars(new,dce_ip) ]
+        }
+        ToorDisplayDceCell $frame.cell_name toor_vars(new,dce_cell) top normal
+        bind $next <Tab> {}
+        bind $next <F1>  {}
+    } else {
+
+        set toor_entry_list  {}
+        set toor_select_list {}
+
+        set subframe  [ToorLabelledSubframe $frame.master dce_workstation \
+                      "Where is the DCE Master Server?\n" top 0 ]
+        set toor_vars(new,dce_cell)      $toor_vars(orig,dce_cell)
+        set toor_vars(new,dce_hostname)  $toor_vars(orig,dce_hostname)
+        set toor_vars(new,dce_ip)        $toor_vars(orig,dce_ip)
+        set toor_vars(new,dce_organiz)   $toor_vars(orig,dce_organiz)
+        set toor_vars(new,dce_role_typ)  $toor_vars(orig,dce_role_typ)
+        set toor_vars(new,dce_role)      $toor_vars(orig,dce_role)
+        if { $toor_vars(new,dce_hostname) != $toor_vars(orig,dce_hostname) } {
+            set toor_vars(new,dce_cell) [ ToorLookupCellName \
+                                              $toor_vars(new,dce_hostname) \
+                                              $toor_vars(new,dce_ip) ]
+        }
+
+        # set up command to update other info when selection changes
+        set cmd [ ToorCmdToUpdateDceHostFromList toor_vars(new,dce_organiz) \
+                                                 toor_vars(new,dce_role_typ) \
+                                                 toor_vars(new,dce_role) \
+                                                 toor_vars(new,dce_hostname) \
+                                                 toor_vars(new,dce_ip) \
+                                                 toor_dummy \
+                                                 toor_dummy2 \
+                                                 toor_dummy3 \
+                                                 $TOOR_OR_NAME_FILE \
+                                                 toor_vars(new,dce_cell) ]
+
+        ToorLabelledRadiobuttons $subframe.select "Data Entry Method:" \
+                                 toor_vars(new,list_selection) normal left 0 \
+                                 "Select From Lists"    1 \
+                                 "Type Information"     0
+        set cell          [ frame $frame.cell_name ]
+        set low           [ frame $frame.low ]
+
+        ToorDisplayHost   $subframe.host toor_vars(new,dce_hostname) left normal
+        ToorDisplayIp     $subframe.ip   toor_vars(new,dce_ip)       left normal
+        ToorDisplayDceCell $cell.cell_name \
+                                         toor_vars(new,dce_cell)     left normal
+        pack               $subframe.host  -side left
+        pack               $subframe.ip    -side left
+        pack               $cell.cell_name -side left
+        pack               $frame.master
+        pack               $subframe $cell $low -side top -anchor w
+
+        ToorUnitSelectionLists $low.lists toor_entry_list \
+                               toor_select_list \
+                               toor_organiz_list toor_org_ip_list \
+                               toor_vars(new,dce_organiz) \
+                               toor_vars(new,dce_role_typ) \
+                               toor_vars(new,dce_role) \
+                               $cmd
+
+        lappend toor_entry_list $subframe.host.entry $subframe.ip.entry \
+                                $cell.cell_name.entry
+        update
+        ToorPleaseWait
+        ToorSetOrgList toor_organiz_list toor_org_ip_list \
+                   [ lindex $toor_select_list 0 ] 1 toor_vars(new,dce_organiz) \
+                   [ lindex $toor_select_list 1 ] toor_vars(new,dce_role_typ) \
+                   [ lindex $toor_select_list 2 ] toor_vars(new,dce_role)
+
+        ToorPropagateNameChange $subframe.host.entry toor_vars(new,dce_ip) \
+                                toor_dummy toor_dummy2 toor_dummy3 \
+                                toor_vars(new,dce_organiz) \
+                                toor_vars(new,dce_role_typ) \
+                                toor_vars(new,dce_role) $TOOR_OR_NAME_FILE \
+                                $toor_select_list
+
+        ToorActivateEntryMethod $toor_select_list $toor_entry_list \
+                                $subframe.select.buttons
+
+        bind $subframe.host.entry <FocusIn>  \
+                        "+ToorSaveEntryValue $subframe.host.entry"
+        bind $subframe.host.entry <FocusOut> \
+                        "+ToorCheckEntryChange $subframe.host.entry \
+                                     ToorDceNameChanged toor_vars(new,dce_ip) \
+                                     toor_vars(new,dce_cell)"
+        bind $subframe.host.entry <FocusOut> \
+                        "+ToorCheckEntryChange $subframe.host.entry \
+                                         ToorSetOrgRoleFromHost \
+                                         toor_organiz_list \
+                                         toor_org_ip_list \
+                                         toor_vars(new,dce_organiz) \
+                                         toor_vars(new,dce_role_typ) \
+                                         toor_vars(new,dce_role) \
+                                         [ lindex $toor_select_list 0] \
+                                         [ lindex $toor_select_list 1] \
+                                         [ lindex $toor_select_list 2]"
+    }
+
+}
+
+################################################################################
+#
+# Get DCE configuration for an ASAS subsystem master, subprompts differ if
+# workstation will be the cell master or a client to anther subsystem or BFA
+#
+proc ToorGetServerDceConfig { frame } {
+    global toor_go_back_to_first_menu toor_vars
+    frame  $frame
+    pack   $frame
+    label  $frame.main_title \
+                          -text "Workstation Configuration"
+    pack   $frame.main_title -side top
+    label  $frame.title2  -text "DCE Configuration for ASAS Subsystem Master\n"
+    pack   $frame.title2 -side top
+    ToorLabelledRadiobuttons $frame.dcemstr \
+           "Where will the DCE Master Server Run?" \
+           toor_vars(new,local_is_dce_master) normal top 0 \
+                          "On this Workstation"               dcemaster \
+                          "On another BFA or ASAS Subsystem"  dceclient
+
+    set   varframe [ frame $frame.varframe -borderwidth 1 ]
+    pack  $varframe -fill x -side top
+
+    ToorButtonSet $frame.btn N toor_go_back_to_first_menu dummy \
+               "Done"  N \
+               "Cancel" Y
+    pack $frame.btn -side top
+
+    ToorGetDceMstrConfig $varframe $frame.btn.b3
+
+    $frame.dcemstr.buttons.dcemaster configure \
+               -command "ToorGetDceMstrConfig $varframe $frame.btn.b3"
+    $frame.dcemstr.buttons.dceclient configure \
+               -command "ToorPleaseWait ; \
+                         ToorGetDceMstrConfig $varframe $frame.btn.b3"
+
+    set ready_to_exit F
+    while { $ready_to_exit == "F" } {
+
+        tkwait variable toor_go_back_to_first_menu
+
+        ToorDestroyEntryErrorsList
+
+        if { $toor_go_back_to_first_menu == "Y" } {
+            set ready_to_exit T
+        } else {
+            set err_list {}
+            ToorAddToErrorList err_list "Host Name" \
+                            [ ToorCheckHostname $toor_vars(new,dce_hostname) ]
+            ToorAddToErrorList err_list "IP Address" \
+                            [ ToorCheckIPAddr $toor_vars(new,dce_ip) ]
+            ToorAddToErrorList err_list "DCE Cell Name" \
+                            [ ToorCheckCellName $toor_vars(new,dce_cell) ]
+            ToorAddToErrorList err_list "Organization" \
+                         [ ToorCheckOptOganization $toor_vars(new,dce_organiz) ]
+            ToorAddToErrorList err_list "Role Type" \
+                           [ ToorCheckOptRoleType $toor_vars(new,dce_role_typ) ]
+            ToorAddToErrorList err_list "Role" \
+                            [ ToorCheckOptRole $toor_vars(new,dce_role) ]
+            set ready_to_exit [ eval ToorDisplayErrors \
+                               {"DCE Configuration for ASAS Subsystem Client"} \
+                               $err_list ]
+        }
+    }
+
+    ToorPleaseWait
+
+    destroy $frame
+}
+
+################################################################################
+#
+# Display error dialog window if passwords didn't match, User must hit OK
+# to exit, since routine does a grab
+#
+proc ToorPasswordMismatch { } {
+    global toor_go_back_to_first_menu
+    toplevel .oops -borderwidth 1
+    label .oops.message -text "! Password does not\nmatch Verify\nPassword\n"
+    pack  .oops.message -side top
+    ToorButtonSet .oops.btn Y toor_go_back_to_first_menu dummy \
+               "OK"  Y
+    pack  .oops.btn -side top
+    grab .oops
+
+    tkwait variable toor_go_back_to_first_menu
+    
+    destroy .oops
+}
+
+################################################################################
+#
+# Prompt user for new dce password and have him verify hit.  When both
+# passwords are the same, write the value to the file.  If no password is
+# entered, the old password is used.
+#
+proc ToorSetDcePassword { frame } {
+
+    global            toor_go_back_to_first_menu \
+                      TOOR_NEW_CONFIG_DIR TOOR_CELL_ADMIN_PW TOOR_DATA_DIR
+
+    set               done_with_this_frame N
+    frame             $frame
+    pack              $frame -side top
+    label             $frame.main_title \
+                      -text "Enter New DCE Cell Administrator Password\n"
+    pack              $frame.main_title -side top
+    ToorPasswordPrompt $frame.f1 pw verf
+    label             $frame.main_prompt \
+                      -text "\nEnter new password, then select \"OK\""
+    pack              $frame.main_prompt -side top
+    ToorButtonSet     $frame.btn N toor_go_back_to_first_menu dummy \
+                      "OK"  N \
+                      "Cancel" Y
+    pack              $frame.btn -side top
+
+    # wait for OK button with password and verify password the same (or cancel)
+
+    while {$done_with_this_frame != "Y"} {
+        focus $frame.btn.b3
+        tkwait variable toor_go_back_to_first_menu
+        if { $toor_go_back_to_first_menu == "N" } {
+            if { [string compare [$pw get] [$verf get]] != 0 } {
+                set done_with_this_frame N
+                ToorPasswordMismatch
+                $pw delete 0 [string length [$pw get]]
+                ToorDecideToEnable $verf $pw
+            } else {
+                set done_with_this_frame Y
+            }
+        } else {
+            set done_with_this_frame Y
+        }
+    }
+
+    if { $toor_go_back_to_first_menu == "N" } {
+        if {[string length [$pw get]] != 0} {
+            set cell_pw [open $TOOR_NEW_CONFIG_DIR/$TOOR_CELL_ADMIN_PW w+ 0600]
+            puts $cell_pw [$pw get]
+            close $cell_pw
+        } else {
+            catch { exec /usr/bin/cp -p $TOOR_DATA_DIR/$TOOR_CELL_ADMIN_PW \
+                             $TOOR_NEW_CONFIG_DIR/$TOOR_CELL_ADMIN_PW } ret_code
+        }
+    }
+
+    ToorPleaseWait
+
+    destroy $frame
+}
+
+################################################################################
+#
+# Configuration change needed - warn user not to halt reconfiguration
+#
+proc ToorReconfigWarning { frame } {
+    global toor_want_to_change_ans
+
+    frame  $frame
+    pack   $frame -side bottom
+    label  $frame.line1a -text "*******************"
+    label  $frame.line1b -text "* !!! WARNING !!! *"
+    label  $frame.line1c -text "*******************\n"
+    pack   $frame.line1a $frame.line1b $frame.line1c -side top
+    label  $frame.line2 -text "Workstation Reconfiguration in Progress\n"
+    pack   $frame.line2 -side top
+    label  $frame.line3 -text "Interrupting Power or"
+    pack   $frame.line3 -side top
+    label  $frame.line3a -text "Halting the Boot Process"
+    pack   $frame.line3a -side top
+    label  $frame.line3b -text "May Render the Workstation Unusable\n"
+    pack   $frame.line3b -side top
+    label  $frame.line4 -text "An Automatic Reboot Will Occur\n"
+    pack   $frame.line4 -side top
+
+    after 50 { global toor_want_to_change_ans; set toor_want_to_change_ans Y }
+    tkwait variable toor_want_to_change_ans
+
+}
+
+################################################################################
+#
+# rename each file in the old_names list to the corresponding entries name
+# in the new_names list
+#
+proc ToorRenameFileLists { old_names new_names } {
+    upvar #0 $old_names my_old_names
+    upvar #0 $new_names my_new_names
+    set indx 0
+    foreach old_name $my_old_names {
+        set new_name [lindex $my_new_names $indx]
+        incr indx
+        catch { exec /usr/bin/mv -f $old_name $new_name } ret_code
+    }
+}
+
+################################################################################
+#
+# return beacon in use status based on presence of startup script
+#
+proc ToorSetBeaconUseStatus { } {
+    global TOOR_BEACON_BOOT_FILE
+    if [ file exists $TOOR_BEACON_BOOT_FILE ] {
+        return beacon
+    } else { 
+        return nobeacon
+    }
+}
+
+################################################################################
+#
+# return slow speed router present status based on presence of startup script
+#
+proc ToorSetSDRPresentStatus { } {
+    global TOOR_SDR_BOOT_FILE
+    if [ file exists $TOOR_SDR_BOOT_FILE ] {
+        return sdr
+    } else { 
+        return nosdr
+    }
+}
+
+################################################################################
+#
+# return ASAS master/client status based on whether our hostname is same as
+# the ASAS master hostname
+#
+proc ToorSetAsasMasterStatus { } {
+    global toor_vars
+    if { $toor_vars(orig,local_hostname) == $toor_vars(orig,asas_hostname) } {
+        return asasmaster
+    } else { 
+        return asasclient
+    }
+}
+
+################################################################################
+#
+# return DCE master/client status based on whether our hostname is same as
+# the DCE master hostname
+#
+proc ToorSetDceMasterStatus { } {
+    global toor_vars
+    if { $toor_vars(orig,local_hostname) == $toor_vars(orig,dce_hostname) } {
+        return dcemaster
+    } else { 
+        return dceclient
+    }
+}
+
+################################################################################
+#
+# return DCE master location (asas or remote) based on whether asas
+# master hostname is same as DCE master hostname, used for ASAS subsystem
+# clients
+#
+proc ToorSetClientDceMasterStatus { } {
+    global toor_vars
+    if { $toor_vars(orig,asas_hostname) == $toor_vars(orig,dce_hostname) } {
+        return asasmaster
+    } else { 
+        return dcemaster
+    }
+}
+
+################################################################################
+#
+# Fetch DCE Cell name from the /opt/dcelocal/dce_cf.db file
+#
+proc ToorGetCellName { } {
+    global TOOR_LAST_CONFIG_DIR TOOR_CELL_NAME_FILE
+    set DCE_CONFIG_FILE "/opt/dcelocal/dce_cf.db"
+    set cell ""
+    catch { set cell \
+            [ exec /usr/bin/grep cellname $DCE_CONFIG_FILE | \
+                   /usr/bin/sed -e "s/\^cellname\[ \/\.\]*//" ] } ret_code
+    if { $cell == "" } {
+        ToorSetVarFromFile cell $TOOR_LAST_CONFIG_DIR/$TOOR_CELL_NAME_FILE
+    }
+    return $cell
+}
+
+################################################################################
+#
+# Fetch hostname associated with first fddi or cddi interface
+# returns null string if no fddi interface found
+#
+proc ToorGetFddiName { hostname } {
+    global TOOR_FDDI_HOSTNAME
+    upvar $hostname my_host
+    set my_host ""
+    if [ file exists $TOOR_FDDI_HOSTNAME ] {
+        ToorSetVarFromFile my_host $TOOR_FDDI_HOSTNAME
+    }
+}
+
+################################################################################
+#
+# Fetch hostname of the dce security server, look first in pe_site file, next
+# in /asas/data/last/dce_master and finally use our hostname if neither
+# found or valid
+#
+proc ToorGetDceHostName { } {
+    global TOOR_PE_SITE_FILE TOOR_LAST_CONFIG_DIR TOOR_DCE_MASTER_FILE
+    global toor_vars TOOR_HOST_FILE
+    set dce_host ""
+    set site_line "abracadabra"
+    if [ file exists $TOOR_PE_SITE_FILE ] {
+        catch { set pe_site [ open $TOOR_PE_SITE_FILE r ] } ret_code
+        catch { gets $pe_site site_line } ret_code
+        catch { close $pe_site } ret_code
+        if [ regexp {:([0-9.]+)\[} $site_line whole dce_ip ] {
+            catch { set dce_host [exec /usr/bin/awk \
+                    "\$1 == dce_ip {print \$2; exit}" \
+                     dce_ip=$dce_ip $TOOR_HOST_FILE] } ret_code
+        }
+        
+    }
+    if { "$dce_host" == "" } {
+        ToorSetVarFromFile dce_host \
+                           $TOOR_LAST_CONFIG_DIR/$TOOR_DCE_MASTER_FILE
+        if { "$dce_host" == "TBD" || "$dce_host" == ""} {
+            set dce_host $toor_vars(orig,asas_hostname)
+        }
+    }
+    return $dce_host
+}
+
+################################################################################
+#
+# Get list of Potential Client Workstations
+#
+proc ToorReadClients { } {
+    global toor_vars TOOR_LAST_CONFIG_DIR TOOR_CLIENTS_FILE
+
+    set toor_vars(orig,client_name_list) {}
+    set toor_vars(orig,client_ip_list)   {}
+    set toor_vars(orig,client_role_list) {}
+    set toor_vars(orig,client_type_list) {}
+    set toor_vars(orig,client_org_list)  {}
+
+    set client_fd -1
+    catch { set client_fd [ open $TOOR_LAST_CONFIG_DIR/$TOOR_CLIENTS_FILE r ] }\
+          ret_code
+    if { $client_fd != -1 } {
+        while { [ gets $client_fd client_line ] >= 0 } {
+            set client_item [ split $client_line "|" ]
+            if { [ lindex $client_item 0 ] != "" } {
+              lappend toor_vars(orig,client_name_list) [ lindex $client_item 0 ]
+              lappend toor_vars(orig,client_ip_list)   [ lindex $client_item 1 ]
+              lappend toor_vars(orig,client_org_list)  [ lindex $client_item 2 ]
+              lappend toor_vars(orig,client_type_list) [ lindex $client_item 3 ]
+              lappend toor_vars(orig,client_role_list) [ lindex $client_item 4 ]
+            }
+        }
+        catch { close $client_fd } ret_code
+    }
+    
+    return
+}
+
+################################################################################
+#
+# display client workstations at selected level (orig, new or last)
+#
+proc ToorDisplayClients { level } {
+    global toor_vars
+
+    set num_entries [ llength $toor_vars($level,client_name_list) ]
+    for { set index 0 } { $index < $num_entries } { incr index } {
+
+        set name      [ format {client_%s} $index ]
+        set ip        [ format {client_ip_%s} $index ]
+        set org       [ format {client_organiz_%s} $index ]
+        set role      [ format {client_role_%s} $index ]
+        set role_type [ format {client_role_typ_%s} $index ]
+
+        ToorLogMessage "$name             = [ lindex \
+                                   $toor_vars($level,client_name_list) $index ]"
+        ToorLogMessage "$ip          = [ lindex \
+                                   $toor_vars($level,client_ip_list) $index ]"
+        ToorLogMessage "$org     = [ lindex \
+                                   $toor_vars($level,client_org_list) $index ]"
+        ToorLogMessage "$role        = [ lindex \
+                                   $toor_vars($level,client_type_list) $index ]"
+        ToorLogMessage "$role_type    = [ lindex \
+                                   $toor_vars($level,client_role_list) $index ]"
+
+    }
+
+}
+
+################################################################################
+#
+# display configuration variables at selected level (orig, new or last)
+#
+proc ToorDisplayGlobals { level } {
+    global toor_vars
+
+    ToorLogMessage "=== configuration level $level variables ==="
+    ToorLogMessage "nis_domain           = $toor_vars($level,nis_domain)"
+    ToorLogMessage "local_hostname       = $toor_vars($level,local_hostname)\n"
+    ToorLogMessage "local_ip             = $toor_vars($level,local_ip)"
+    ToorLogMessage "or_name              = $toor_vars($level,or_name)"
+    ToorLogMessage "uic                  = $toor_vars($level,uic)"
+    ToorLogMessage "fddi_used            = $toor_vars($level,fddi_used)"
+    ToorLogMessage "fddi_hostname        = $toor_vars($level,fddi_hostname)"
+    ToorLogMessage "fddi_ip              = $toor_vars($level,fddi_ip)"
+    ToorLogMessage "fddi_or_name         = $toor_vars($level,fddi_or_name)"
+    ToorLogMessage "beacon_is_being_used = $toor_vars($level,beacon_is_being_used)"
+    ToorLogMessage "sdr                  = $toor_vars($level,sdr)"
+    ToorLogMessage "asas_hostname        = $toor_vars($level,asas_hostname)"
+    ToorLogMessage "asas_ip              = $toor_vars($level,asas_ip)"
+    ToorLogMessage "enclave              = $toor_vars($level,enclave)"
+    ToorLogMessage "hostid               = $toor_vars($level,hostid)"
+    ToorLogMessage "net_intfc            = $toor_vars($level,net_intfc)"
+    ToorLogMessage "dce_cell             = $toor_vars($level,dce_cell)"
+    ToorLogMessage "dce_hostname         = $toor_vars($level,dce_hostname)"
+    ToorLogMessage "dce_ip               = $toor_vars($level,dce_ip)"
+    ToorLogMessage "left_video           = $toor_vars($level,left_video)"
+    ToorLogMessage "right_video          = $toor_vars($level,right_video)"
+    ToorLogMessage "left_video_cmd       = $toor_vars($level,left_video_cmd)"
+    ToorLogMessage "right_video_cmd      = $toor_vars($level,right_video_cmd)"
+    ToorLogMessage "our_organiz          = $toor_vars($level,our_organiz)"
+    ToorLogMessage "our_role_typ         = $toor_vars($level,our_role_typ)"
+    ToorLogMessage "our_role             = $toor_vars($level,our_role)"
+    ToorLogMessage "our_urn              = $toor_vars($level,our_urn)"
+    ToorLogMessage "fddi_organiz         = $toor_vars($level,fddi_organiz)"
+    ToorLogMessage "fddi_role_typ        = $toor_vars($level,fddi_role_typ)"
+    ToorLogMessage "fddi_role            = $toor_vars($level,fddi_role)"
+    ToorLogMessage "mst_organiz          = $toor_vars($level,mst_organiz)"
+    ToorLogMessage "mst_role_typ         = $toor_vars($level,mst_role_typ)"
+    ToorLogMessage "mst_role             = $toor_vars($level,mst_role)"
+    ToorLogMessage "dce_organiz          = $toor_vars($level,dce_organiz)"
+    ToorLogMessage "dce_role_typ         = $toor_vars($level,dce_role_typ)"
+    ToorLogMessage "dce_role             = $toor_vars($level,dce_role)"
+    ToorLogMessage "list_selection       = $toor_vars($level,list_selection)"
+    ToorDisplayClients $level 
+}
+
+################################################################################
+#
+# set initial configuration variables based on current unix/nis+/dce info
+#
+proc ToorGetInitialConfig {} {
+    global toor_vars toor_domain_suffix toor_interfaces toor_fddi_present \
+           TOOR_CURRENT_CONFIG_DIR TOOR_LAST_CONFIG_DIR TOOR_NEW_CONFIG_DIR \
+           TOOR_BEACON_BOOT_FILE TOOR_HOST_FILE \
+           TOOR_MASTER_NAME_FILE TOOR_DEFAULT_ENCLAVE_FILE \
+           TOOR_CELL_NAME_FILE TOOR_DCE_MASTER_FILE TOOR_SDR_FILE \
+           TOOR_HOST_ID_FILE TOOR_INTERFACE_FILE TOOR_DOMAIN_SUFFIX_FILE \
+           TOOR_RECONFIG_NAME TOOR_LEFT_VIDEO_FILE \
+           TOOR_RIGHT_VIDEO_FILE TOOR_LEFT_VIDEO_CMD_FILE \
+           TOOR_RIGHT_VIDEO_CMD_FILE TOOR_DEFAULT_DOMAIN_FILE \
+           TOOR_FDDI_OR_NAME_FILE TOOR_OR_NAME_FILE \
+           TOOR_OUR_ORGANIZ_FILE TOOR_OUR_ROLE_TYPE_FILE TOOR_OUR_ROLE_FILE \
+           TOOR_FDDI_ORGANIZ_FILE TOOR_FDDI_ROLE_TYPE_FILE TOOR_FDDI_ROLE_FILE \
+           TOOR_OUR_URN_FILE TOOR_LIST_FILE TOOR_MST_ORGANIZ_FILE \
+           TOOR_MST_ROLE_TYPE_FILE TOOR_MST_ROLE_FILE \
+           TOOR_DCE_ORGANIZ_FILE TOOR_DCE_ROLE_TYPE_FILE TOOR_DCE_ROLE_FILE
+
+    set NODE_NAME_FILE        "/etc/nodename"
+
+    # get current configuration
+    ToorSetVarFromFile toor_vars(orig,nis_domain)      $TOOR_DEFAULT_DOMAIN_FILE
+    ToorSetVarFromFile toor_vars(orig,local_hostname)  $NODE_NAME_FILE
+    ToorGetIpAddress   $toor_vars(orig,local_hostname) toor_vars(orig,local_ip)
+    catch {set toor_vars(orig,beacon_is_being_used)   [ToorSetBeaconUseStatus]}\
+                       ret_code
+    ToorSetVarFromFile toor_vars(orig,asas_hostname) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_MASTER_NAME_FILE
+    set toor_vars(orig,sdr)                           [ToorSetSDRPresentStatus]
+    ToorGetIpAddress   $toor_vars(orig,asas_hostname)  toor_vars(orig,asas_ip)
+    set toor_vars(orig,local_is_asas_master) "asasmaster"
+    catch {set toor_vars(orig,local_is_asas_master)  [ToorSetAsasMasterStatus]}\
+                       ret_code
+    ToorSetVarFromFile toor_vars(orig,enclave)        $TOOR_DEFAULT_ENCLAVE_FILE
+    ToorSetVarFromFile toor_vars(orig,hostid) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_HOST_ID_FILE
+    ToorSetVarFromFile toor_vars(orig,net_intfc) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_INTERFACE_FILE
+    set ifce_missing 1
+    foreach ifce $toor_interfaces {
+        if { $toor_vars(orig,net_intfc) == $ifce } {
+            set ifce_missing 0
+            break
+        }
+    }
+    if { $ifce_missing || ("$toor_vars(orig,net_intfc)" == "") } {
+        set toor_vars(orig,net_intfc)  [ lindex $toor_interfaces 0 ]
+    }
+    set                toor_vars(orig,dce_cell)      [ ToorGetCellName ]
+    set                toor_vars(orig,dce_hostname)  [ ToorGetDceHostName ]
+    ToorGetIpAddress   $toor_vars(orig,dce_hostname)   toor_vars(orig,dce_ip)
+    set toor_vars(orig,asas_is_dce_master)  [ToorSetClientDceMasterStatus]
+    catch { set toor_vars(orig,local_is_dce_master)   [ToorSetDceMasterStatus]}\
+                       ret_code
+    set toor_vars(orig,or_name) [ ToorLookupOrName \
+                                  $toor_vars(orig,local_hostname) \
+                                  $toor_vars(orig,local_ip) \
+                                  $TOOR_LAST_CONFIG_DIR/$TOOR_OR_NAME_FILE ]
+
+    set toor_vars(orig,uic)     [ ToorLookupUic \
+                                  $toor_vars(orig,local_hostname) \
+                                  $toor_vars(orig,local_ip) ]
+
+    ToorSetVarFromFile toor_vars(orig,left_video)  \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_LEFT_VIDEO_FILE
+    if { "$toor_vars(orig,left_video)" == "" } {
+        set toor_vars(orig,left_video)  "cgfourteen0_h"
+    }
+    ToorSetVarFromFile toor_vars(orig,right_video)  \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_RIGHT_VIDEO_FILE
+    if { "$toor_vars(orig,right_video)" == "" } {
+        set toor_vars(orig,right_video) "none"
+    }
+    ToorSetVarFromFile toor_vars(orig,left_video_cmd) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_LEFT_VIDEO_CMD_FILE
+    ToorSetVarFromFile toor_vars(orig,right_video_cmd) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_RIGHT_VIDEO_CMD_FILE
+
+    if { $toor_fddi_present } {
+        ToorGetFddiName    toor_vars(orig,fddi_hostname)
+    } else {
+        set toor_vars(orig,fddi_hostname) ""
+    }
+    if { "$toor_vars(orig,fddi_hostname)" == "" } {
+        set toor_vars(orig,fddi_used)    "N"
+        set toor_vars(orig,fddi_ip)      ""
+        set toor_vars(orig,fddi_or_name) ""
+    } else {
+        set toor_vars(orig,fddi_used) "Y"
+        ToorGetIpAddress   $toor_vars(orig,fddi_hostname) \
+                           toor_vars(orig,fddi_ip)
+        set toor_vars(orig,fddi_or_name) [ ToorLookupOrName \
+                                           $toor_vars(orig,fddi_hostname) \
+                                           $toor_vars(orig,fddi_ip) \
+                                 $TOOR_LAST_CONFIG_DIR/$TOOR_FDDI_OR_NAME_FILE ]
+    }
+    ToorSetVarFromFile toor_vars(orig,our_organiz) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_OUR_ORGANIZ_FILE
+    ToorSetVarFromFile toor_vars(orig,our_role_typ) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_OUR_ROLE_TYPE_FILE
+    ToorSetVarFromFile toor_vars(orig,our_role) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_OUR_ROLE_FILE
+    ToorSetVarFromFile toor_vars(orig,our_urn) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_OUR_URN_FILE
+    ToorSetVarFromFile toor_vars(orig,fddi_organiz) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_FDDI_ORGANIZ_FILE
+    ToorSetVarFromFile toor_vars(orig,fddi_role_typ) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_FDDI_ROLE_TYPE_FILE
+    ToorSetVarFromFile toor_vars(orig,fddi_role) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_FDDI_ROLE_FILE
+    ToorSetVarFromFile toor_vars(orig,mst_organiz) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_MST_ORGANIZ_FILE
+    ToorSetVarFromFile toor_vars(orig,mst_role_typ) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_MST_ROLE_TYPE_FILE
+    ToorSetVarFromFile toor_vars(orig,mst_role) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_MST_ROLE_FILE
+    ToorSetVarFromFile toor_vars(orig,dce_organiz) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_DCE_ORGANIZ_FILE
+    ToorSetVarFromFile toor_vars(orig,dce_role_typ) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_DCE_ROLE_TYPE_FILE
+    ToorSetVarFromFile toor_vars(orig,dce_role) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_DCE_ROLE_FILE
+    ToorSetVarFromFile toor_vars(orig,list_selection) \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_LIST_FILE
+    if { "$toor_vars(orig,list_selection)" == "" } {
+        set toor_vars(orig,list_selection)    "1"
+    }
+
+    ToorReadClients
+
+    # save configuration at the start of the boot
+    catch { exec /usr/bin/cp $TOOR_HOST_FILE $TOOR_CURRENT_CONFIG_DIR } ret_code
+
+    ToorSetVarFromFile toor_domain_suffix \
+                       $TOOR_LAST_CONFIG_DIR/$TOOR_DOMAIN_SUFFIX_FILE
+    if { $toor_domain_suffix == "" } {
+        set toor_domain_suffix "army.mil"
+    }
+
+    # so DANTE can tell if reconfig of self resume needed
+    catch { exec /usr/bin/rm -f $TOOR_LAST_CONFIG_DIR/$TOOR_RECONFIG_NAME } \
+            ret_code
+
+}
+
+################################################################################
+#
+# write list of potential workstations at current level to flat files
+#
+proc ToorWriteClientFile { level dir } {
+    global toor_vars TOOR_CLIENTS_FILE
+
+    set num_entries [ llength $toor_vars($level,client_name_list) ]
+
+    set client_fd -1
+    catch { set client_fd [ open $dir/$TOOR_CLIENTS_FILE w+ ] }\
+          ret_code
+    if { $client_fd != -1 } {
+        for { set index 0 } { $index < $num_entries } { incr index } {
+
+            puts $client_fd "[ lindex $toor_vars($level,client_name_list) \
+                               $index ]|[ lindex \
+                               $toor_vars($level,client_ip_list) \
+                               $index ]|[ lindex \
+                               $toor_vars($level,client_org_list) \
+                               $index ]|[ lindex \
+                               $toor_vars($level,client_type_list) \
+                               $index ]|[ lindex \
+                               $toor_vars($level,client_role_list) $index ]"
+
+        }
+        catch { close $client_fd } ret_code
+    }
+    
+    return
+}
+
+################################################################################
+#
+# write value of variable to the file named in "file"
+#
+proc ToorWriteVarToFile { variable file } {
+    upvar #0 $variable var
+    catch { [ exec /usr/bin/echo $var > $file ] } ret_code
+    catch { [ exec /usr/bin/chmod 644 $file ] } ret_code
+}
+
+################################################################################
+#
+# write configuration variables at current level to flat files
+#
+proc ToorWriteConfigFiles { level } {
+    global toor_vars \
+           TOOR_CURRENT_CONFIG_DIR TOOR_LAST_CONFIG_DIR TOOR_NEW_CONFIG_DIR \
+           TOOR_BEACON_BOOT_FILE TOOR_HOST_FILE TOOR_SDR_FILE \
+           TOOR_MASTER_NAME_FILE TOOR_USE_BEACON_FILE \
+           TOOR_CELL_NAME_FILE TOOR_DCE_MASTER_FILE \
+           TOOR_HOST_ID_FILE TOOR_INTERFACE_FILE TOOR_OR_NAME_FILE \
+           TOOR_ENCLAVE_FILE TOOR_LEFT_VIDEO_FILE \
+           TOOR_RIGHT_VIDEO_FILE TOOR_LEFT_VIDEO_CMD_FILE \
+           TOOR_RIGHT_VIDEO_CMD_FILE \
+           TOOR_UIC_FILE TOOR_FDDI_OR_NAME_FILE \
+           TOOR_OUR_ORGANIZ_FILE TOOR_OUR_ROLE_TYPE_FILE TOOR_OUR_ROLE_FILE \
+           TOOR_FDDI_ORGANIZ_FILE TOOR_FDDI_ROLE_TYPE_FILE TOOR_FDDI_ROLE_FILE \
+           TOOR_OUR_URN_FILE TOOR_LIST_FILE TOOR_MST_ORGANIZ_FILE \
+           TOOR_MST_ROLE_TYPE_FILE TOOR_MST_ROLE_FILE \
+           TOOR_DCE_ORGANIZ_FILE TOOR_DCE_ROLE_TYPE_FILE TOOR_DCE_ROLE_FILE
+
+    if { $level == "orig" } {
+        set dir $TOOR_CURRENT_CONFIG_DIR
+    } elseif { $level == "new" } {
+        set dir $TOOR_NEW_CONFIG_DIR
+    } else {
+        set dir $TOOR_LAST_CONFIG_DIR
+    }
+
+    set DOMAIN_FILE         "domain"
+    set NODE_NAME_FILE      "nodename"
+    set LOCAL_IP_FILE       "local_ip"
+    set ASAS_IP_FILE        "subsystem_ip"
+    set DCE_IP_FILE         "dce_ip"
+    set FDDI_HOST_NAME_FILE "fddi_hostname"
+    set FDDI_IP_FILE        "fddi_ip"
+    set FDDI_USED_FILE      "fddi_used"
+
+    # write configuration variables
+    ToorWriteVarToFile toor_vars($level,nis_domain) \
+                       $dir/$DOMAIN_FILE
+
+    ToorWriteVarToFile toor_vars($level,local_hostname) \
+                       $dir/$NODE_NAME_FILE
+
+    ToorWriteVarToFile toor_vars($level,local_ip) \
+                       $dir/$LOCAL_IP_FILE
+
+    ToorWriteVarToFile toor_vars($level,beacon_is_being_used) \
+                       $dir/$TOOR_USE_BEACON_FILE
+
+    ToorWriteVarToFile toor_vars($level,sdr) \
+                       $dir/$TOOR_SDR_FILE
+
+    ToorWriteVarToFile toor_vars($level,asas_hostname) \
+                       $dir/$TOOR_MASTER_NAME_FILE
+
+    ToorWriteVarToFile toor_vars($level,asas_ip) \
+                       $dir/$ASAS_IP_FILE
+
+    ToorWriteVarToFile toor_vars($level,enclave) \
+                       $dir/$TOOR_ENCLAVE_FILE
+
+    ToorWriteVarToFile toor_vars($level,hostid) \
+                       $dir/$TOOR_HOST_ID_FILE
+
+    ToorWriteVarToFile toor_vars($level,net_intfc) \
+                       $dir/$TOOR_INTERFACE_FILE
+
+    ToorWriteVarToFile toor_vars($level,dce_cell) \
+                       $dir/$TOOR_CELL_NAME_FILE
+
+    ToorWriteVarToFile toor_vars($level,dce_hostname) \
+                       $dir/$TOOR_DCE_MASTER_FILE
+
+    ToorWriteVarToFile toor_vars($level,dce_ip) \
+                       $dir/$DCE_IP_FILE
+
+    ToorWriteVarToFile toor_vars($level,or_name) \
+                       $dir/$TOOR_OR_NAME_FILE
+
+    ToorWriteVarToFile toor_vars($level,uic) \
+                       $dir/$TOOR_UIC_FILE
+
+    ToorWriteVarToFile toor_vars($level,left_video) \
+                       $dir/$TOOR_LEFT_VIDEO_FILE
+
+    ToorWriteVarToFile toor_vars($level,right_video) \
+                       $dir/$TOOR_RIGHT_VIDEO_FILE
+
+    ToorWriteVarToFile toor_vars($level,left_video_cmd) \
+                       $dir/$TOOR_LEFT_VIDEO_CMD_FILE
+
+    ToorWriteVarToFile toor_vars($level,right_video_cmd) \
+                       $dir/$TOOR_RIGHT_VIDEO_CMD_FILE
+
+    ToorWriteVarToFile toor_vars($level,fddi_used) \
+                       $dir/$FDDI_USED_FILE
+
+    ToorWriteVarToFile toor_vars($level,fddi_hostname) \
+                       $dir/$FDDI_HOST_NAME_FILE
+
+    ToorWriteVarToFile toor_vars($level,fddi_ip) \
+                       $dir/$FDDI_IP_FILE
+
+    ToorWriteVarToFile toor_vars($level,fddi_or_name) \
+                       $dir/$TOOR_FDDI_OR_NAME_FILE
+
+    ToorWriteVarToFile toor_vars($level,our_organiz) \
+                       $dir/$TOOR_OUR_ORGANIZ_FILE
+
+    ToorWriteVarToFile toor_vars($level,our_role_typ) \
+                       $dir/$TOOR_OUR_ROLE_TYPE_FILE
+
+    ToorWriteVarToFile toor_vars($level,our_role) \
+                       $dir/$TOOR_OUR_ROLE_FILE
+
+    ToorWriteVarToFile toor_vars($level,our_urn) \
+                       $dir/$TOOR_OUR_URN_FILE
+
+    ToorWriteVarToFile toor_vars($level,fddi_organiz) \
+                       $dir/$TOOR_FDDI_ORGANIZ_FILE
+
+    ToorWriteVarToFile toor_vars($level,fddi_role_typ) \
+                       $dir/$TOOR_FDDI_ROLE_TYPE_FILE
+
+    ToorWriteVarToFile toor_vars($level,fddi_role) \
+                       $dir/$TOOR_FDDI_ROLE_FILE
+
+    ToorWriteVarToFile toor_vars($level,mst_organiz) \
+                       $dir/$TOOR_MST_ORGANIZ_FILE
+
+    ToorWriteVarToFile toor_vars($level,mst_role_typ) \
+                       $dir/$TOOR_MST_ROLE_TYPE_FILE
+
+    ToorWriteVarToFile toor_vars($level,mst_role) \
+                       $dir/$TOOR_MST_ROLE_FILE
+
+    ToorWriteVarToFile toor_vars($level,dce_organiz) \
+                       $dir/$TOOR_DCE_ORGANIZ_FILE
+
+    ToorWriteVarToFile toor_vars($level,dce_role_typ) \
+                       $dir/$TOOR_DCE_ROLE_TYPE_FILE
+
+    ToorWriteVarToFile toor_vars($level,dce_role) \
+                       $dir/$TOOR_DCE_ROLE_FILE
+
+    ToorWriteVarToFile toor_vars($level,list_selection) \
+                       $dir/$TOOR_LIST_FILE
+
+    ToorWriteClientFile $level $dir
+}
+
+################################################################################
+#
+# Create default_accounts file if are changing from an ASAS subsystem client
+# to an ASAS subsystem master.  Signals later scripts to recreate the
+# factory accounts
+#
+proc ToorCheckAccountReload {} {
+    global toor_vars TOOR_NEED_ACCTS_FILE
+    if { $toor_vars(new,local_is_asas_master) == "asasmaster" \
+         && $toor_vars(orig,local_is_asas_master) == "asasclient" } {
+        catch { [ exec /usr/bin/touch $TOOR_NEED_ACCTS_FILE ] } ret_code
+        catch { exec /usr/bin/chmod 644 $TOOR_NEED_ACCTS_FILE } ret_code
+    } else {
+        catch { [ exec /usr/bin/rm -f $TOOR_NEED_ACCTS_FILE ] } ret_code
+    }
+}
+
+################################################################################
+#
+# set desired configuration to original configuration
+#
+proc ToorSetDefaultToInitConfig {} {
+    global toor_vars
+    set toor_vars(new,nis_domain)          $toor_vars(orig,nis_domain)
+    set toor_vars(new,local_hostname)      $toor_vars(orig,local_hostname)
+    set toor_vars(new,local_ip)            $toor_vars(orig,local_ip)
+    set toor_vars(new,or_name)             $toor_vars(orig,or_name)
+    set toor_vars(new,or_name_s)           [string trim $toor_vars(new,or_name)]
+    set toor_vars(new,uic)                 $toor_vars(orig,uic)
+    set toor_vars(new,beacon_is_being_used) \
+                                           $toor_vars(orig,beacon_is_being_used)
+    set toor_vars(new,sdr)                 $toor_vars(orig,sdr)
+    set toor_vars(new,asas_hostname)       $toor_vars(orig,asas_hostname)
+    set toor_vars(new,asas_ip)             $toor_vars(orig,asas_ip)
+    set toor_vars(new,local_is_asas_master) \
+                                           $toor_vars(orig,local_is_asas_master)
+    set toor_vars(new,enclave)             $toor_vars(orig,enclave)
+    set toor_vars(new,net_intfc)           $toor_vars(orig,net_intfc)
+    set toor_vars(new,dce_cell)            $toor_vars(orig,dce_cell)
+    set toor_vars(new,dce_hostname)        $toor_vars(orig,dce_hostname)
+    set toor_vars(new,dce_ip)              $toor_vars(orig,dce_ip)
+    set toor_vars(new,local_is_dce_master) $toor_vars(orig,local_is_dce_master)
+    set toor_vars(new,asas_is_dce_master)  $toor_vars(orig,asas_is_dce_master)
+    set toor_vars(new,hostid)              $toor_vars(orig,hostid)
+    set toor_vars(new,left_video)          $toor_vars(orig,left_video)
+    set toor_vars(new,right_video)         $toor_vars(orig,right_video)
+    set toor_vars(new,left_video_cmd)      $toor_vars(orig,left_video_cmd)
+    set toor_vars(new,right_video_cmd)     $toor_vars(orig,right_video_cmd)
+    set toor_vars(new,fddi_hostname)       $toor_vars(orig,fddi_hostname)
+    set toor_vars(new,fddi_used)           $toor_vars(orig,fddi_used)
+    set toor_vars(new,fddi_ip)             $toor_vars(orig,fddi_ip)
+    set toor_vars(new,fddi_or_name)        $toor_vars(orig,fddi_or_name)
+    set toor_vars(new,our_organiz)         $toor_vars(orig,our_organiz)
+    set toor_vars(new,our_role_typ)        $toor_vars(orig,our_role_typ)
+    set toor_vars(new,our_role)            $toor_vars(orig,our_role)
+    set toor_vars(new,our_urn)             $toor_vars(orig,our_urn)
+    set toor_vars(new,fddi_organiz)        $toor_vars(orig,fddi_organiz)
+    set toor_vars(new,fddi_role_typ)       $toor_vars(orig,fddi_role_typ)
+    set toor_vars(new,fddi_role)           $toor_vars(orig,fddi_role)
+    set toor_vars(new,mst_organiz)         $toor_vars(orig,mst_organiz)
+    set toor_vars(new,mst_role_typ)        $toor_vars(orig,mst_role_typ)
+    set toor_vars(new,mst_role)            $toor_vars(orig,mst_role)
+    set toor_vars(new,dce_organiz)         $toor_vars(orig,dce_organiz)
+    set toor_vars(new,dce_role_typ)        $toor_vars(orig,dce_role_typ)
+    set toor_vars(new,dce_role)            $toor_vars(orig,dce_role)
+    set toor_vars(new,list_selection)      $toor_vars(orig,list_selection)
+    set toor_vars(new,client_name_list)    $toor_vars(orig,client_name_list)
+    set toor_vars(new,client_ip_list)      $toor_vars(orig,client_ip_list)
+    set toor_vars(new,client_org_list)     $toor_vars(orig,client_org_list)
+    set toor_vars(new,client_type_list)    $toor_vars(orig,client_type_list)
+    set toor_vars(new,client_role_list)    $toor_vars(orig,client_role_list)
+
+}
+
+################################################################################
+#
+#   FUNCTION:    main
+#
+#   DESCRIPTION: Get information on current workstation configuration, prompt
+#                user for updates, then write out desired configuration for
+#                use later in the boot process
+#
+#   NOTES:       Reconfiguration forces an automatic reboot.  When this
+#                reboot is detected, the desired configuration is moved to the
+#                new configuration
+#      
+#   PARAMETERS:  None
+#
+#   GLOBAL VARIABLES AND SIDE EFFECTS:
+#                current configuration written to /asas/data/current
+#                desired configuration written to /asas/data/new
+#                on reboot desired configuration written to /asas/data/new
+#      
+#   RETURNS:     0
+#      
+################################################################################
+
+ToorCheckHaveDirectories
+
+ToorGetEthernetInterfaces
+
+ToorGetInitialConfig
+
+ToorWriteConfigFiles orig
+
+if { ! [file exists $TOOR_RECONFIG_FILE] } {
+    set toor_go_back_to_first_menu "Y"
+
+    ToorAgeLogFiles
+
+    set toor_organiz_list {}
+    set toor_org_ip_list {}
+    ToorCacheUnl $TOOR_ORGANIZ_UNL_FILE toor_organiz_list 2
+    ToorCacheUnl $TOOR_ORG_IP_UNL_FILE toor_org_ip_list
+
+    ToorDisplayGlobals orig
+
+    while {$toor_go_back_to_first_menu == "Y"} {
+
+        set toor_reconfig_needed "N"
+        set toor_go_back_to_first_menu "N"
+        ToorSetDefaultToInitConfig
+
+        # show current config and ask if change needed
+        ToorDisplayConfig .f1
+
+        if { [ ToorWantToChangeConfig ] == "Y" } {
+
+            # user wants to change configuration, prompt for values,
+            # The cancel keys will set toor_go_back_to_first_menu = Y and we'll 
+            # go back to displaying the original configuration
+
+            set toor_reconfig_needed "Y"
+            ToorPleaseWait
+            destroy            .f1
+            ToorGetLocalConfig .f1
+
+            if { $toor_go_back_to_first_menu == "N" } {
+                if { $toor_vars(new,fddi_used) == "Y" } {
+                    ToorGetFddiConfig .f1
+                }
+            }
+
+            if { $toor_go_back_to_first_menu == "N" } {
+                ToorGetDisplayConfig   .f1
+            }
+
+            if { $toor_go_back_to_first_menu == "N" } {
+                ToorGetTopConfig   .f1
+            }
+
+            if { $toor_go_back_to_first_menu == "N" } {
+                if { $toor_vars(new,beacon_is_being_used) == "beacon" } {
+                    ToorSetBeaconDceConfig
+                } else {
+                    # not using beacon, get dce configuration info from user
+                    if {$toor_vars(new,local_is_asas_master) == "asasmaster"} {
+                        ToorGetCurrentTime .f1
+                        if { $toor_go_back_to_first_menu == "N" } {
+                            ToorGetServerDceConfig .f1
+                        }
+                    } else {
+                        ToorGetClientDceConfig .f1
+                    }
+                }
+            }
+
+            if { $toor_go_back_to_first_menu == "N" } {
+                ToorSetDcePassword .f1
+            }
+
+            if { $toor_go_back_to_first_menu == "N" } {
+                ToorDisplayNewConfig .f1
+            }
+
+        } else {
+
+            # no change requested, make sure hostid hasn't changed
+
+            destroy          .f1
+            ToorCheckHostId  .f1
+
+        }
+
+    }
+
+    if { $toor_reconfig_needed == "Y" } {
+
+        # something has changed, turn off beacon script and enable reconfig
+
+        ToorReconfigWarning  .f1
+        ToorLogMessage       "reconfiguration needed"
+        ToorDisplayGlobals   new
+        ToorWriteConfigFiles new
+        ToorWriteVarToFile   toor_reconfig_needed $TOOR_RECONFIG_FILE
+        ToorCheckAccountReload
+        ToorRenameFileLists  TOOR_BEACON_OFF_LIST TOOR_BEACON_ON_LIST
+        if { $toor_vars(new,beacon_is_being_used) == "beacon" } {
+            ToorRenameFileLists TOOR_BEACON_PASS1_OFF_LIST \
+                                TOOR_BEACON_PASS1_ON_LIST
+            catch { exec /usr/bin/rm -f $TOOR_BEACON_COMMAND_FILE } ret_code
+        } else {
+            ToorRenameFileLists TOOR_BEACON_PASS1_ON_LIST  \
+                                TOOR_BEACON_PASS1_OFF_LIST
+        }
+
+        if { $toor_vars(new,sdr) == "sdr" } {
+            ToorRenameFileLists TOOR_SDR_OFF_LIST  TOOR_SDR_ON_LIST
+        } else {
+            ToorRenameFileLists TOOR_SDR_ON_LIST TOOR_SDR_OFF_LIST
+        }
+
+        if { $toor_vars(new,fddi_used) == "Y" } {
+            ToorRenameFileLists TOOR_FDDI_OFF_LIST  TOOR_FDDI_ON_LIST
+        } else {
+            ToorRenameFileLists TOOR_FDDI_ON_LIST TOOR_FDDI_OFF_LIST
+        }
+
+    } else {
+        ToorLogMessage "NO reconfiguration requested"
+    }
+
+} else {
+
+    # Entered after automatic reboot after a reconfiguration
+    ToorLogMessage "detected automatic reboot"
+
+    # set beacon active as requested by user
+    ToorSetVarFromFile use_beacon  $TOOR_NEW_CONFIG_DIR/$TOOR_USE_BEACON_FILE
+    if { $use_beacon == "beacon" } {
+        ToorRenameFileLists TOOR_BEACON_ON_LIST  TOOR_BEACON_OFF_LIST
+    } else {
+        ToorRenameFileLists TOOR_BEACON_OFF_LIST TOOR_BEACON_ON_LIST
+    }
+
+    # enable some scripts based on subsystem master/client status
+    ToorSetVarFromFile master $TOOR_NEW_CONFIG_DIR/$TOOR_MASTER_NAME_FILE
+    if { $master == $toor_vars(orig,local_hostname) } {
+        ToorRenameFileLists TOOR_MASTER_OFF_LIST  TOOR_MASTER_ON_LIST
+
+	catch { exec /usr/bin/cp $TOOR_CRONTAB_HOME $TOOR_CRONTAB_DEST } \
+		ret_code
+	catch { exec /usr/bin/chown root:analyst $TOOR_CRONTAB_DEST } \
+		ret_code
+	catch { exec /usr/bin/chmod 400 $TOOR_CRONTAB_DEST } \
+		ret_code
+    } else {
+        ToorRenameFileLists TOOR_MASTER_ON_LIST TOOR_MASTER_OFF_LIST
+
+	catch { exec /usr/bin/rm -f TOOR_CRONTAB_DEST } ret_code
+    }
+
+    foreach file_name [ glob -nocomplain $TOOR_LAST_CONFIG_DIR/*.nis ] {
+        catch { exec /usr/bin/cp -p $file_name $TOOR_CURRENT_CONFIG_DIR } \
+                ret_code
+    }
+    foreach file_name [ glob -nocomplain $TOOR_LAST_CONFIG_DIR/*.new ] {
+        catch { exec /usr/bin/cp -p $file_name $TOOR_CURRENT_CONFIG_DIR } \
+                ret_code
+    }
+    foreach file_name [ glob -nocomplain $TOOR_NEW_CONFIG_DIR/* ] {
+        catch { exec /usr/bin/cp -p $file_name $TOOR_LAST_CONFIG_DIR } ret_code
+    }
+    foreach file_name [ glob -nocomplain $TOOR_NEW_CONFIG_DIR/*.nis ] {
+        catch { exec /usr/bin/rm -f $file_name } ret_code
+    }
+    catch { exec /usr/bin/mv -f $TOOR_NEW_CONFIG_DIR/$TOOR_CELL_ADMIN_PW \
+                                $TOOR_DATA_DIR/$TOOR_CELL_ADMIN_PW } ret_code
+    catch { exec /usr/bin/cp -p $TOOR_NEW_CONFIG_DIR/$TOOR_ENCLAVE_FILE \
+                                $TOOR_DEFAULT_ENCLAVE_FILE } ret_code
+    catch { exec /usr/bin/rm -f $TOOR_RECONFIG_FILE } ret_code
+    catch { exec /usr/bin/chmod 644 $TOOR_DEFAULT_ENCLAVE_FILE } ret_code
+    catch { exec /usr/bin/chmod 644 $TOOR_LAST_CONFIG_DIR/$TOOR_ENCLAVE_FILE } \
+            ret_code
+    catch { exec /usr/bin/cp    $TOOR_NEW_CONFIG_DIR/$TOOR_ENCLAVE_FILE \
+                                $TOOR_TFTP_DIR/$TOOR_ENCLAVE_FILE } ret_code
+    catch { exec /usr/bin/chmod 644 $TOOR_TFTP_DIR/$TOOR_ENCLAVE_FILE } ret_code
+    catch { exec /usr/bin/chown nobody $TOOR_TFTP_DIR/$TOOR_ENCLAVE_FILE } \
+            ret_code
+    catch { exec /usr/bin/chgrp nobody $TOOR_TFTP_DIR/$TOOR_ENCLAVE_FILE } \
+            ret_code
+    catch { exec /usr/bin/cp    $TOOR_DEFAULT_DOMAIN_FILE \
+                                $TOOR_TFTP_DIR/domain } ret_code
+    catch { exec /usr/bin/chmod 644 $TOOR_TFTP_DIR/domain } ret_code
+    catch { exec /usr/bin/chown nobody $TOOR_TFTP_DIR/domain } ret_code
+    catch { exec /usr/bin/chgrp nobody $TOOR_TFTP_DIR/domain } ret_code
+
+}
+
+exit

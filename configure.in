@@ -283,9 +283,14 @@ fi
 #	archive.
 #--------------------------------------------------------------------
 
-AC_CHECK_LIB(tcl, Tcl_Init, [LIBS="-ltcl8.0 $LIBS"; got_it=yes],
+AC_DEFINE(USE_TCL_STUBS, [1])
+AC_CHECK_LIB(tclstub8.5, Tcl_InitStubs, [LIBS="-ltclstub8.5 $LIBS"; got_it=yes],
     [AC_MSG_WARN(couldn't find tcl8.0 library archive)] )
 AC_TRY_CPP([#include "tcl.h"], ,
     [AC_MSG_WARN(couldn't find tcl include file)] )
+
+TARGETS='libctk.so'
+CFLAGS="${CFLAGS} -fPIC -DPIC"
+AC_SUBST(TARGETS)
 
 AC_OUTPUT(Makefile)

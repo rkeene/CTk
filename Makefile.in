@@ -68,7 +68,7 @@ LIBS = @LIBS@
 
 # To change the compiler switches, for example to change from -O
 # to -g, change the following line:
-CFLAGS = -O
+CFLAGS = @CFLAGS@
 
 # Linker options (-L/.../lib) necessary to find the TCL
 # and curses libraries (if any).  It is (hopefully) filled in
@@ -169,15 +169,16 @@ HDRS = default.h keyCodes.h ks_names.h patchlevel.h tk.h tkInt.h \
 
 DEMOPROGS = widget
 
-all: libctk.a cwish$(VERSION)
+all: @TARGETS@
 
 libctk.a: $(OBJS)
 	rm -f libctk.a
 	ar cr libctk.a $(OBJS)
 	$(RANLIB) libctk.a
 
-cwish$(VERSION): tkAppInit.o libctk.a
-	$(CC) $(CC_SWITCHES) tkAppInit.o libctk.a $(LDFLAGS) $(LIBS) -o cwish$(VERSION)
+libctk.so: $(OBJS)
+	rm -f libctk.so
+	gcc -rdynamic -shared $(CFLAGS) $(LDFLAGS) -o libctk.so $(OBJS) $(LIBS)
 
 configInfo: Makefile
 	@rm -f configInfo
@@ -188,7 +189,7 @@ configInfo: Makefile
 
 install: install-binaries install-libraries install-demos install-man
 
-install-binaries: libctk.a cwish$(VERSION)
+install-binaries: libctk.a
 	@for i in $(LIB_INSTALL_DIR) $(BIN_INSTALL_DIR) ; \
 	    do \
 	    if [ ! -d $$i ] ; then \
@@ -201,8 +202,6 @@ install-binaries: libctk.a cwish$(VERSION)
 	@echo "Installing libctk.a"
 	@$(INSTALL_DATA) libctk.a $(LIB_INSTALL_DIR)
 	@$(RANLIB) $(LIB_INSTALL_DIR)/libctk.a
-	@echo "Installing cwish$(VERSION)"
-	@$(INSTALL_PROGRAM) cwish$(VERSION) $(BIN_INSTALL_DIR)
 
 install-libraries:
 	@for i in $(INSTALL_ROOT)$(prefix)/lib $(INCLUDE_INSTALL_DIR) \
@@ -267,11 +266,12 @@ Makefile: $(SRC_DIR)/Makefile.in
 	$(SHELL) config.status
 
 clean:
+	rm -f libctk.a libctk.so
 	rm -f *.a *.o core errs *~ \#* TAGS *.E a.out errors tktest cwish$(VERSION) \
 		config.info
 
 distclean: clean
-	rm -f Makefile config.status
+	rm -f Makefile config.status config.log
 
 depend:
 	makedepend -- $(CC_SWITCHES) -- $(SRCS)

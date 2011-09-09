@@ -1,0 +1,10 @@
+Makefile
+Makefile/*
+autom4te.cache
+autom4te.cache/*
+config.log
+config.log/*
+config.status
+config.status/*
+configure
+configure/*

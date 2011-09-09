@@ -195,10 +195,11 @@ install-binaries: @TARGETS@
 		else true; \
 		fi; \
 	    done;
-	@for target in @TARGETS@; do
+	@for target in @TARGETS@; do \
 		echo "Installing $${target}"; \
-		$(INSTALL_DATA) $${target} $(LIB_INSTALL_DIR); \
+		$(INSTALL_PROGRAM) $${target} $(LIB_INSTALL_DIR); \
 	done
+	@$(INSTALL_DATA) pkgIndex.tcl $(LIB_INSTALL_DIR)
 
 install-libraries:
 	@for i in $(INSTALL_ROOT)$(prefix)/lib $(INCLUDE_INSTALL_DIR) \

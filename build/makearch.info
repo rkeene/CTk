@@ -43,4 +43,4 @@ UPDATED="build/autogen.sh"
 AFTER=""
 
 # Files matching these (space-seperated) patterns are deleted
-TMPS="*.out HEADER build aclocal"
+TMPS="*.out HEADER build aclocal INST"

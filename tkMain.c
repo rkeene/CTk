@@ -153,7 +153,7 @@ Tk_Main(argc, argv, appInitProc)
     }
     if (Tk_ParseArgv(interp, (Tk_Window) NULL, &argc, argv, argTable, 0)
 	    != TCL_OK) {
-	fprintf(stderr, "%s\n", interp->result);
+	fprintf(stderr, "%s\n", Tcl_GetStringResult(interp));
 	exit(1);
     }
     if (name == NULL) {
@@ -216,7 +216,7 @@ Tk_Main(argc, argv, appInitProc)
     mainWindow = Tk_CreateMainWindow(interp, display, name, class);
     ckfree(class);
     if (mainWindow == NULL) {
-	fprintf(stderr, "%s\n", interp->result);
+	fprintf(stderr, "%s\n", Tcl_GetStringResult(interp));
 	exit(1);
     }
 
@@ -237,7 +237,7 @@ Tk_Main(argc, argv, appInitProc)
 	Tcl_SetVar(interp, "geometry", geometry, TCL_GLOBAL_ONLY);
 	code = Tcl_VarEval(interp, "wm geometry . ", geometry, (char *) NULL);
 	if (code != TCL_OK) {
-	    fprintf(stderr, "%s\n", interp->result);
+	    fprintf(stderr, "%s\n", Tcl_GetStringResult(interp));
 	}
     }
 
@@ -250,7 +250,7 @@ Tk_Main(argc, argv, appInitProc)
        if (errChannel) {
             Tcl_Write(errChannel,
                    "application-specific initialization failed: ", -1);
-            Tcl_Write(errChannel, interp->result, -1);
+            Tcl_Write(errChannel, Tcl_GetStringResult(interp), -1);
             Tcl_Write(errChannel, "\n", 1);
         }
 
@@ -284,7 +284,7 @@ Tk_Main(argc, argv, appInitProc)
 	    if (fullName == NULL) {
                errChannel = Tcl_GetStdChannel(TCL_STDERR);
                if (errChannel) {
-                    Tcl_Write(errChannel, interp->result, -1);
+                    Tcl_Write(errChannel, Tcl_GetStringResult(interp), -1);
                     Tcl_Write(errChannel, "\n", 1);
                 }
 	    } else {
@@ -299,7 +299,7 @@ Tk_Main(argc, argv, appInitProc)
                     if (Tcl_EvalFile(interp, fullName) != TCL_OK) {
                        errChannel = Tcl_GetStdChannel(TCL_STDERR);
                        if (errChannel) {
-                            Tcl_Write(errChannel, interp->result, -1);
+                            Tcl_Write(errChannel, Tcl_GetStringResult(interp), -1);
                             Tcl_Write(errChannel, "\n", 1);
                         }
                     }
@@ -439,7 +439,7 @@ StdinProc(clientData, mask)
     code = Tcl_RecordAndEval(interp, cmd, TCL_EVAL_GLOBAL);
     Tcl_CreateChannelHandler(chan, TCL_READABLE, StdinProc, (ClientData) chan);
     Tcl_DStringFree(&command);
-    if (*interp->result != 0) {
+    if (*(Tcl_GetStringResult(interp)) != 0) {
 	if ((code != TCL_OK) || (tty)) {
 	    /*
 	     * The statement below used to call "printf", but that resulted
@@ -448,7 +448,7 @@ StdinProc(clientData, mask)
 	     * NOTE: This probably will not work under Windows either.
 	     */
 
-	    puts(interp->result);
+	    puts(Tcl_GetStringResult(interp));
 	}
     }
 
@@ -503,7 +503,7 @@ Prompt(interp, partial)
 	if (code != TCL_OK) {
 	    Tcl_AddErrorInfo(interp,
 		    "\n    (script that generates prompt)");
-	    fprintf(stderr, "%s\n", interp->result);
+	    fprintf(stderr, "%s\n", Tcl_GetStringResult(interp));
 	    goto defaultPrompt;
 	}
     }

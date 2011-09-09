@@ -1332,16 +1332,16 @@ GetFocusOk(interp, winPtr, flagPtr)
      */
 
     if (Tcl_VarEval(interp, Tk_PathName(winPtr), " cget -takefocus",
-	    (char *) NULL) == TCL_OK  && interp->result[0] != '\0') {
+	    (char *) NULL) == TCL_OK  && Tcl_GetStringResult(interp)[0] != '\0') {
 	
 	/*
 	 * Try to interpret option value as simple 1 or 0.
 	 */
 
-	if (interp->result[1] == '\0') {
-	    if (interp->result[0] == '1') {
+	if (Tcl_GetStringResult(interp)[1] == '\0') {
+	    if (Tcl_GetStringResult(interp)[0] == '1') {
 		goto focus;
-	    } else if (interp->result[0] == '0') {
+	    } else if (Tcl_GetStringResult(interp)[0] == '0') {
 		goto nofocus;
 	    }
 	}
@@ -1379,8 +1379,8 @@ GetFocusOk(interp, winPtr, flagPtr)
 
     if (Tcl_VarEval(interp, Tk_PathName(winPtr), " cget -state",
 	    (char *) NULL) == TCL_OK) {
-	if (interp->result[0] == 'd'
-		&& strcmp(interp->result, "disabled") == 0) goto nofocus;
+	if (Tcl_GetStringResult(interp)[0] == 'd'
+		&& strcmp(Tcl_GetStringResult(interp), "disabled") == 0) goto nofocus;
     }
 
     /*
@@ -1390,13 +1390,13 @@ GetFocusOk(interp, winPtr, flagPtr)
 
     if (Tcl_VarEval(interp, "bind ", Tk_PathName(winPtr), (char *) NULL)
 	    != TCL_OK)  return TCL_ERROR;
-    if (strstr(interp->result, "Key"))  goto focus;
-    if (strstr(interp->result, "Focus"))  goto focus;
+    if (strstr(Tcl_GetStringResult(interp), "Key"))  goto focus;
+    if (strstr(Tcl_GetStringResult(interp), "Focus"))  goto focus;
 
     if (Tcl_VarEval(interp, "bind ", Tk_Class(winPtr), (char *) NULL)
 	    != TCL_OK)  return TCL_ERROR;
-    if (strstr(interp->result, "Key"))  goto focus;
-    if (strstr(interp->result, "Focus"))  goto focus;
+    if (strstr(Tcl_GetStringResult(interp), "Key"))  goto focus;
+    if (strstr(Tcl_GetStringResult(interp), "Focus"))  goto focus;
 
 nofocus:
     *flagPtr = 0;

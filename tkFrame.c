@@ -299,7 +299,7 @@ TkInitFrame(interp, tkwin, toplevel, argc, argv)
 	if (Tk_PlaceCmd((ClientData) framePtr->tkwin, interp,
 		8, placeArgv) != TCL_OK) {
 	    panic("place failed for toplevel: %s: %s",
-		    placeArgv[1], interp->result);
+		    placeArgv[1], Tcl_GetStringResult(interp));
 	}
     } else {
 	tkwin->fillStyle = CTK_INVISIBLE_STYLE;

@@ -459,7 +459,7 @@ TextWidgetCmd(clientData, interp, argc, argv)
 	    result = TCL_ERROR;
 	    goto done;
 	}
-	TkTextPrintIndex(&index1, interp->result);
+	TkTextPrintIndex(&index1, Tcl_GetStringResult(interp));
     } else if ((c == 'i') && (strncmp(argv[1], "insert", length) == 0)
 	    && (length >= 3)) {
 	int i, j, numTags;
@@ -1344,7 +1344,7 @@ TextSearchCmd(textPtr, interp, argc, argv)
 		    goto done;
 		}
 	    }
-	    TkTextPrintIndex(&index, interp->result);
+	    TkTextPrintIndex(&index, Tcl_GetStringResult(interp));
 	    goto done;
 	}
 

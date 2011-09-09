@@ -274,7 +274,7 @@ clean:
 		config.info
 
 distclean: clean
-	rm -f Makefile config.status config.log
+	rm -f Makefile config.status config.log pkgIndex.tcl
 
 depend:
 	makedepend -- $(CC_SWITCHES) -- $(SRCS)

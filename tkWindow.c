@@ -183,6 +183,10 @@ Tk_Init(interp)
     int retval;
 
 #ifdef USE_TCL_STUBS
+    Tcl_InitStubs(interp, "8", 0);
+#endif
+
+#ifdef USE_TCL_STUBS
     winPtr = Tk_CreateMainWindow(interp, NULL, "ctk", "ctk");
     if (winPtr == NULL) {
         return(TCL_ERROR);

@@ -77,7 +77,7 @@ AC_DEFUN(DC_CHK_OS_INFO, [
 			;;
 		mingw*)
 			SHOBJEXT="dll"
-			SHOBJFLAGS="-mno-cygwin -mms-bitfields -DPIC"
+			SHOBJFLAGS="-mms-bitfields -DPIC"
 			SHOBJLDFLAGS='-shared -Wl,--dll -Wl,--enable-auto-image-base -Wl,--output-def,$[@].def,--out-implib,$[@].a'
 			;;
 	esac

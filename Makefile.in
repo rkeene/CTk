@@ -11,6 +11,9 @@
 
 VERSION = @PACKAGE_VERSION@
 
+# Compatability with old versions
+DESTDIR := $(INSTALL_ROOT)
+
 #----------------------------------------------------------------
 # Things you can change to personalize the Makefile for your own
 # site (you can make these changes in either Makefile.in or
@@ -27,38 +30,31 @@ VERSION = @PACKAGE_VERSION@
 prefix =	@prefix@
 exec_prefix =	@exec_prefix@
 
-# The following definition can be set to non-null for special systems
-# like AFS with replication.  It allows the pathnames used for installation
-# to be different than those used for actually reference files at
-# run-time.  INSTALL_ROOT is prepended to $prefix and $exec_prefix
-# when installing files.
-INSTALL_ROOT =
-
-# Directory from which applications will reference the library of Tcl
-# scripts (note: you can set the CTK_LIBRARY environment variable at
-# run-time to override the compiled-in location):
-CTK_LIBRARY =		$(prefix)/lib/ctk$(VERSION)
-
 # Path name to use when installing library scripts:
-SCRIPT_INSTALL_DIR =	$(INSTALL_ROOT)$(CTK_LIBRARY)
+SCRIPT_INSTALL_DIR =	$(DESTDIR)$(CTK_LIBRARY)
 
 # Directory in which to install the archive libctk.a:
-LIB_INSTALL_DIR =	$(INSTALL_ROOT)$(exec_prefix)/lib
+LIB_INSTALL_DIR =	$(exec_prefix)/lib
 
 # Directory in which to install the program cwish:
-BIN_INSTALL_DIR =	$(INSTALL_ROOT)$(exec_prefix)/bin
+BIN_INSTALL_DIR =	$(DESTDIR)$(exec_prefix)/bin
 
 # Directory from which the program cwish should be referenced by scripts:
 BIN_DIR =		$(exec_prefix)/bin
 
 # Directory in which to install the include file ctk.h:
-INCLUDE_INSTALL_DIR =	$(INSTALL_ROOT)$(prefix)/include
+INCLUDE_INSTALL_DIR =	$(DESTDIR)$(prefix)/include
 
 # Top-level directory for manual entries:
-MAN_INSTALL_DIR =	$(INSTALL_ROOT)$(prefix)/man
+MAN_INSTALL_DIR =	$(DESTDIR)$(prefix)/man
 
 # Directory in which to install manual entry for cwish:
 MAN1_INSTALL_DIR =	$(MAN_INSTALL_DIR)/man1
+
+# Directory from which applications will reference the library of Tcl
+# scripts (note: you can set the CTK_LIBRARY environment variable at
+# run-time to override the compiled-in location):
+CTK_LIBRARY =		$(LIB_INSTALL_DIR)/ctk$(VERSION)
 
 # Libraries to use when linking:  must include at least the
 # appropriate version of Tcl for this version of CTk, curses,
@@ -186,28 +182,28 @@ libctk.@SHOBJEXT@: $(OBJS)
 install: install-binaries install-libraries install-demos install-man
 
 install-binaries: @TARGETS@
-	@for i in $(LIB_INSTALL_DIR) $(BIN_INSTALL_DIR) ; \
+	@for i in $(SCRIPT_INSTALL_DIR); \
 	    do \
 	    if [ ! -d $$i ] ; then \
 		echo "Making directory $$i"; \
-		mkdir $$i; \
+		mkdir -p $$i; \
 		chmod 755 $$i; \
 		else true; \
 		fi; \
 	    done;
 	@for target in @TARGETS@; do \
 		echo "Installing $${target}"; \
-		$(INSTALL_PROGRAM) $${target} $(LIB_INSTALL_DIR); \
+		$(INSTALL_PROGRAM) $${target} $(SCRIPT_INSTALL_DIR); \
 	done
-	@$(INSTALL_DATA) pkgIndex.tcl $(LIB_INSTALL_DIR)
+	@$(INSTALL_DATA) pkgIndex.tcl $(SCRIPT_INSTALL_DIR)
 
 install-libraries:
-	@for i in $(INSTALL_ROOT)$(prefix)/lib $(INCLUDE_INSTALL_DIR) \
+	@for i in $(DESTDIR)$(prefix)/lib $(INCLUDE_INSTALL_DIR) \
 		$(SCRIPT_INSTALL_DIR) ; \
 	    do \
 	    if [ ! -d $$i ] ; then \
 		echo "Making directory $$i"; \
-		mkdir $$i; \
+		mkdir -p $$i; \
 		chmod 755 $$i; \
 		else true; \
 		fi; \
@@ -221,12 +217,12 @@ install-libraries:
 	    done;
 
 install-demos:
-	@for i in $(INSTALL_ROOT)$(prefix)/lib $(SCRIPT_INSTALL_DIR) \
+	@for i in $(DESTDIR)$(prefix)/lib $(SCRIPT_INSTALL_DIR) \
 		$(SCRIPT_INSTALL_DIR)/demos; \
 	    do \
 	    if [ ! -d $$i ] ; then \
 		echo "Making directory $$i"; \
-		mkdir $$i; \
+		mkdir -p $$i; \
 		chmod 755 $$i; \
 		else true; \
 		fi; \
@@ -249,7 +245,7 @@ install-man:
 	    do \
 	    if [ ! -d $$i ] ; then \
 		echo "Making directory $$i"; \
-		mkdir $$i; \
+		mkdir -p $$i; \
 		chmod 755 $$i; \
 		else true; \
 		fi; \

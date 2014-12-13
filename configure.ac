@@ -22,10 +22,16 @@ AC_SEARCH_LIBS(getch, ncurses curses tinfo,, [
 ])
 
 AC_SEARCH_LIBS(curses_version, ncurses curses tinfo)
+AC_SEARCH_LIBS(curs_set, ncurses curses tinfo)
+AC_SEARCH_LIBS(set_term, ncurses curses tinfo)
+AC_SEARCH_LIBS(beep, ncurses curses tinfo)
+AC_SEARCH_LIBS(keypad, ncurses curses tinfo)
+
+AC_CHECK_FUNCS(curs_set set_term beep keypad)
 
 dnl Look for appropriate headers
 AC_HEADER_STDC
-AC_CHECK_HEADERS(ctype.h curses.h errno.h fcntl.h limits.h math.h ncurses.h pwd.h signal.h stddef.h stdio.h stdlib.h string.h sys/file.h sys/select.h sys/stat.h sys/time.h sys/times.h sys/types.h tcl.h unistd.h)
+AC_CHECK_HEADERS(ctype.h curses.h curses/curses.h curses/ncurses.h ncurses/ncurses.h errno.h fcntl.h limits.h math.h ncurses.h pwd.h signal.h stddef.h stdio.h stdlib.h string.h sys/file.h sys/select.h sys/stat.h sys/time.h sys/times.h sys/types.h tcl.h unistd.h)
 
 dnl Determine what type of targets to build
 TARGETS="libctk.${SHOBJEXT}"

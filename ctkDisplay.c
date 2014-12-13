@@ -14,12 +14,15 @@
 #include "tkPort.h"
 #include "tkInt.h"
 #include <sys/times.h>
-#ifdef USE_NCURSES_H
-#   include <ncurses.h>
-#else
-#   include <curses.h>
+#ifdef HAVE_CURSES_H
+#  include <curses.h>
+#elif defined(HAVE_CURSES_CURSES_H)
+#  include <curses/curses.h>
+#elif defined(HAVE_CURSES_NCURSES_H)
+#  include <curses/ncurses.h>
+#elif defined(HAVE_NCURSES_NCURSES_H)
+#  include <ncurses/ncurses.h>
 #endif
-
 #ifdef CLK_TCK
 #   define MS_PER_CLOCK	(1000.0/CLK_TCK)
 #elif defined HZ

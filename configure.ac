@@ -17,9 +17,11 @@ dnl Perform Tcl Extension required stuff
 TCLEXT_INIT
 
 dnl Determine how to link to NCurses
-AC_SEARCH_LIBS(stdscr, ncurses curses,, [
+AC_SEARCH_LIBS(getch, ncurses curses tinfo,, [
 	AC_MSG_ERROR([Unable to determine how to link to curses])
 ])
+
+AC_SEARCH_LIBS(curses_version, ncurses curses tinfo)
 
 dnl Look for appropriate headers
 AC_HEADER_STDC
